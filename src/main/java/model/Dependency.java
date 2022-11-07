@@ -28,7 +28,7 @@ public class Dependency {
     private String artifactId; //该依赖的artifactId
     private String version; //该依赖的当前版本
     private List<String> upVersions; //该依赖对应的更高版本
-    private DependencySet higherSet;
+//    private DependencySet higherSet;
     private List<Dependency> higherList;
 
 
@@ -47,7 +47,7 @@ public class Dependency {
         this.groupId = groupId;
         this.artifactId = artifactId;
         this.version = version;
-        this.higherSet = new DependencySet();
+//        this.higherSet = new DependencySet();
         this.higherList = new ArrayList<>();
         this.upVersions = new ArrayList<>();
         //把当前依赖的版本加进去
@@ -67,9 +67,14 @@ public class Dependency {
     }
 
     //获取该依赖更高版本
-    public DependencySet getUpDpSet() throws InterruptedException {
+
+    /**
+     * 对于依赖d，获取它更高版本的集合
+     * @return higherSet
+     * @throws InterruptedException
+     */
+    public List<Dependency> getHigherDependencyList() throws InterruptedException {
         CountDownLatch latch = new CountDownLatch(1);
-//        List<Dependency> higherDependency = new ArrayList<>();
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -97,21 +102,20 @@ public class Dependency {
                             upVersions.add(text);
                             higherList.add(new Dependency(groupId, artifactId, text));
                             System.out.println("获取到" + groupId + " : " + artifactId + "的更高版本:" + text);
-                            higherSet.addToList(new Dependency(groupId, artifactId, text));
                         }
                     }
                     //最后要把当前依赖加进去，因为有可能不升级（大于等于）
                     higherList.add(new Dependency(groupId, artifactId, version));
-                    higherSet.addToList(new Dependency(groupId, artifactId, version));
                     latch.countDown();
                 } else {
                     System.out.println("获取网页失败，请重试！");
+                    return;
                 }
             }
         }
         ).start();
         latch.await();
-        return higherSet;
+        return higherList;
     }
 
     private void sleep() {

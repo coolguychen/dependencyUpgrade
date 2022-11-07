@@ -34,8 +34,13 @@ public class Main {
         //解析pom文件
         procedure.parsePom();
         //对于每一个依赖，向上搜索
-        procedure.upgradeVersion();
+        procedure.getHigherVersions();
         //获取最终的结果集
-        procedure.getResult();
+        procedure.getResults();
+        //打印出结果集
+        procedure.printRes();
+
+        return;
     }
+
 }
