@@ -4,24 +4,6 @@ package core;
  * Main函数
  */
 public class Main {
-    //传入工程路径
-    private String filePath;
-
-    public void start(){
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                Init init = new Init();
-                if(filePath != null){
-                    init.setFilePath(filePath);
-                } else{
-                    init.inputPath();
-                }
-                init.execIt();
-
-            }
-        }).start();
-    }
 
     public static void main(String[] args) {
         //初始化
@@ -39,8 +21,8 @@ public class Main {
         procedure.getResults();
         //打印出结果集
         procedure.printRes();
-
-        return;
+        // TODO: 9/11/2022 冲突检测&筛选
+        procedure.conflictDetect();
     }
 
 }

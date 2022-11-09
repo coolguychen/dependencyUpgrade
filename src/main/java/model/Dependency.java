@@ -1,10 +1,6 @@
 package model;
 
-import okhttp3.Call;
-import okhttp3.Callback;
 import okhttp3.Response;
-import org.checkerframework.checker.units.qual.C;
-import org.jetbrains.annotations.NotNull;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -13,9 +9,7 @@ import util.RandomUtil;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 
 import static util.HttpUtil.LocalAddress;
@@ -27,13 +21,13 @@ public class Dependency {
     private String groupId; //该依赖的groupId
     private String artifactId; //该依赖的artifactId
     private String version; //该依赖的当前版本
-    private List<String> upVersions; //该依赖对应的更高版本
+    private List<String> higherVersions; //该依赖对应的更高版本
 //    private DependencySet higherSet;
     private List<Dependency> higherList;
 
 
-    public List<String> getUpVersions() {
-        return upVersions;
+    public List<String> getHigherVersions() {
+        return higherVersions;
     }
 
     /**
@@ -49,9 +43,9 @@ public class Dependency {
         this.version = version;
 //        this.higherSet = new DependencySet();
         this.higherList = new ArrayList<>();
-        this.upVersions = new ArrayList<>();
+        this.higherVersions = new ArrayList<>();
         //把当前依赖的版本加进去
-        this.upVersions.add(version);
+        this.higherVersions.add(version);
     }
 
     public String getGroupId() {
@@ -96,21 +90,25 @@ public class Dependency {
                     //根据class标签名获取到版本号
                     for (Element e : doc.getElementsByClass("vbtn")) {
                         String text = e.text();
-                        //如果 version(当前版本) <= text
-                        if (version.compareTo(text) < 0) {
+                        // TODO: 8/11/2022 如何判断版本更高还需考虑 从上至下的位置检索
+                        //如何判断是更高的依赖？——如果 version(当前版本) <= text 且字符串长度小于等于
+                        if (version.length() <= text.length() && version.compareTo(text) < 0 ) {
                             //加入集合中
-                            upVersions.add(text);
+                            higherVersions.add(text);
                             higherList.add(new Dependency(groupId, artifactId, text));
-                            System.out.println("获取到" + groupId + " : " + artifactId + "的更高版本:" + text);
+                            System.out.println("获取到" + artifactId + "的更高版本:" + text);
+                        }
+                        else{
+                            //如果遇到了小于自身的依赖 退出循环？
+                            break;
                         }
                     }
                     //最后要把当前依赖加进去，因为有可能不升级（大于等于）
                     higherList.add(new Dependency(groupId, artifactId, version));
-                    latch.countDown();
                 } else {
                     System.out.println("获取网页失败，请重试！");
-                    return;
                 }
+                latch.countDown();
             }
         }
         ).start();

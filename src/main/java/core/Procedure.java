@@ -16,11 +16,11 @@ public class Procedure {
     //解析出来的项目的依赖的集合
     private List<Dependency> dependencySet = new ArrayList<>();
 
-    //依赖对应的更高版本的集合
+    //所有依赖对应的更高版本的集合
     private List<List<Dependency>> higherSet = new ArrayList<>();
 
     //得到的依赖升级版本的结果集合
-    private List<List<Dependency>> result = new ArrayList<>();
+    private List<List<Dependency>> resultSet = new ArrayList<>();
 
     //项目路径
     private String filePath;
@@ -49,16 +49,24 @@ public class Procedure {
             Element dependencies = root.element("dependencies"); //获取到dependencies的字段
             List<Element> list = dependencies.elements(); //dependencies下的子元素
             for (Element dependency : list) { //循环输出全部dependency的相关信息
-                String groupId = dependency.element("groupId").getText();
+                Element e = dependency.element("scope");
+                if(e != null) {
+                    String scope = dependency.element("scope").getText();
+//                    System.out.println("排除范围为" + scope + "的包");
+                }
+                else {
+                    String groupId = dependency.element("groupId").getText();
 //                System.out.println("groupId为：" + groupId);
-                String artifactId = dependency.element("artifactId").getText();
+                    String artifactId = dependency.element("artifactId").getText();
 //                System.out.println("artifactId为："+artifactId);
-                String version = dependency.element("version").getText();
+                    String version = dependency.element("version").getText();
 //                System.out.println("版本号为：" + version);
-                //新建一个Dependency
-                Dependency d = new Dependency(groupId, artifactId, version);
-                //添加到项目依赖列表里面
-                dependencySet.add(d);
+                    //新建一个Dependency
+                    Dependency d = new Dependency(groupId, artifactId, version);
+                    //添加到项目依赖列表里面
+                    dependencySet.add(d);
+                }
+
             }
             System.out.println("获取到如下依赖：");
             for (Dependency d: dependencySet) {
@@ -82,8 +90,6 @@ public class Procedure {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            // TODO: 7/11/2022  如果获取到的依赖集合大小为0，说明页面响应失败，重试
-
             while(higherDependencySet.size() == 0) {
                 try {
                     higherDependencySet = d.getHigherDependencyList();
@@ -155,13 +161,16 @@ public class Procedure {
                 list.add(d);
             }
             //加入结果集
-            result.add(list);
+            resultSet.add(list);
         }
     }
 
+    /**
+     * 打印可升级的依赖的结果集
+     */
     public void printRes(){
-        System.out.println("共有" + result.size() + "个结果集。结果如下：");
-        for(List<Dependency> list: result) {
+        System.out.println("共有" + resultSet.size() + "个结果集。结果如下：");
+        for(List<Dependency> list: resultSet) {
             Dependency d = null;
             for (int i = 0; i < list.size()-1; i++) {
                 d = list.get(i);
@@ -170,5 +179,16 @@ public class Procedure {
             d = list.get(list.size() - 1);
             System.out.println(d.getArtifactId() + ":"+ d.getVersion());
         }
+        System.out.println("共有" + resultSet.size() + "个结果集。");
     }
+
+
+    /**
+     * 对result结果集中的结果进行冲突检测
+     */
+    public void conflictDetect(){
+
+    }
+
+
 }
