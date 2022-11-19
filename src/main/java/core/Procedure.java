@@ -25,9 +25,6 @@ public class Procedure {
     //项目路径
     private String filePath;
 
-    public Procedure() {
-    }
-
     /**
      * @param init
      */
@@ -50,11 +47,11 @@ public class Procedure {
             List<Element> list = dependencies.elements(); //dependencies下的子元素
             for (Element dependency : list) { //循环输出全部dependency的相关信息
                 Element e = dependency.element("scope");
-                if(e != null) {
+                if (e != null) {
                     String scope = dependency.element("scope").getText();
-//                    System.out.println("排除范围为" + scope + "的包");
-                }
-                else {
+                    if (scope.equals("test") || scope.equals("runtime"))
+                        System.out.println("排除范围为" + scope + "的包");
+                } else {
                     String groupId = dependency.element("groupId").getText();
 //                System.out.println("groupId为：" + groupId);
                     String artifactId = dependency.element("artifactId").getText();
@@ -69,7 +66,7 @@ public class Procedure {
 
             }
             System.out.println("获取到如下依赖：");
-            for (Dependency d: dependencySet) {
+            for (Dependency d : dependencySet) {
                 System.out.println(d.getArtifactId() + ":" + d.getVersion());
             }
         } catch (DocumentException e) {
@@ -80,9 +77,9 @@ public class Procedure {
     /**
      * 对于dependencySet中的每个dependency，获取它更高的版本
      */
-    public void getHigherVersions(){
+    public void getHigherVersions() {
         // 多线程并行 获取更高的版本
-        for (Dependency d: dependencySet) {
+        for (Dependency d : dependencySet) {
             //获取到dependency更高版本的集合
             List<Dependency> higherDependencySet = new ArrayList<>();
             try {
@@ -90,7 +87,7 @@ public class Procedure {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            while(higherDependencySet.size() == 0) {
+            while (higherDependencySet.size() == 0) {
                 try {
                     higherDependencySet = d.getHigherDependencyList();
                 } catch (InterruptedException e) {
@@ -108,14 +105,10 @@ public class Procedure {
      * 把一个List{[1,2],[A,B],[a,b]} 转化成
      * List{[1,A,a],[1,A,b],[1,B,a],[1,B,b],[2,A,a],[2,A,b],[2,B,a],[2,B,b]} 数组输出
      *
-     * @param dimensionValue
-     *              原List
-     * @param result
-     *              通过乘积转化后的数组
-     * @param layer
-     *              中间参数
-     * @param currentList
-     *               中间参数
+     * @param dimensionValue 原List
+     * @param result         通过乘积转化后的数组
+     * @param layer          中间参数
+     * @param currentList    中间参数
      */
     public void descartes(List<List<Dependency>> dimensionValue, List<List<Dependency>> result, int layer, List<Dependency> currentList) {
         //中间参数小于列表
@@ -148,15 +141,15 @@ public class Procedure {
      * 获得最终结果集
      * 多列表笛卡尔积
      */
-    public void getResults(){
-        List<List<Dependency>> dimensionValue = higherSet;	// 原来的List
+    public void getResults() {
+        List<List<Dependency>> dimensionValue = higherSet;    // 原来的List
         List<List<Dependency>> res = new ArrayList<>(); //返回集合
         descartes(dimensionValue, res, 0, new ArrayList<>());
         //打印结果集信息
-        for (List<Dependency> dp: res) {
+        for (List<Dependency> dp : res) {
             List<Dependency> list = new ArrayList<>();
 //            System.out.println(dp.size()); //dp.size()为依赖数目
-            for (Dependency d: dp) {
+            for (Dependency d : dp) {
 //                System.out.print(d.getGroupId() + ":" + d.getArtifactId() + ":"+ d.getVersion() + " ");
                 list.add(d);
             }
@@ -168,16 +161,16 @@ public class Procedure {
     /**
      * 打印可升级的依赖的结果集
      */
-    public void printRes(){
+    public void printRes() {
         System.out.println("共有" + resultSet.size() + "个结果集。结果如下：");
-        for(List<Dependency> list: resultSet) {
+        for (List<Dependency> list : resultSet) {
             Dependency d = null;
-            for (int i = 0; i < list.size()-1; i++) {
+            for (int i = 0; i < list.size() - 1; i++) {
                 d = list.get(i);
-                System.out.print(d.getArtifactId() + ":"+ d.getVersion() + " & ");
+                System.out.print(d.getArtifactId() + ":" + d.getVersion() + " & ");
             }
             d = list.get(list.size() - 1);
-            System.out.println(d.getArtifactId() + ":"+ d.getVersion());
+            System.out.println(d.getArtifactId() + ":" + d.getVersion());
         }
         System.out.println("共有" + resultSet.size() + "个结果集。");
     }
@@ -186,8 +179,24 @@ public class Procedure {
     /**
      * 对result结果集中的结果进行冲突检测
      */
-    public void conflictDetect(){
+    public void conflictDetect() {
+        //对每一个结果集 首先构建依赖树
+        for (List<Dependency> dependencyList : resultSet) {
+            constructTree(dependencyList);
+        }
+    }
 
+    private void constructTree(List<Dependency> dependencyList) {
+        for (Dependency d : dependencyList) {
+            //查看/获取其传递依赖
+            try {
+                // TODO: 19/11/2022 如果获取网页失败 需要重新获取
+                d.getTransitiveDeps();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+        }
     }
 
 

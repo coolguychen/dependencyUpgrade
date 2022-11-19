@@ -4,6 +4,7 @@ import okhttp3.Response;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import util.HttpUtil;
 import util.RandomUtil;
 
@@ -22,9 +23,9 @@ public class Dependency {
     private String artifactId; //该依赖的artifactId
     private String version; //该依赖的当前版本
     private List<String> higherVersions; //该依赖对应的更高版本
-//    private DependencySet higherSet;
-    private List<Dependency> higherList;
-
+    private List<Dependency> higherList; //该依赖对应的更高依赖的集合
+    //间接依赖
+    private List<Dependency> subDependency;
 
     public List<String> getHigherVersions() {
         return higherVersions;
@@ -90,7 +91,6 @@ public class Dependency {
                     //根据class标签名获取到版本号
                     for (Element e : doc.getElementsByClass("vbtn")) {
                         String text = e.text();
-                        // TODO: 8/11/2022 如何判断版本更高还需考虑 从上至下的位置检索
                         //如何判断是更高的依赖？——如果 version(当前版本) <= text 且字符串长度小于等于
                         if (version.length() <= text.length() && version.compareTo(text) < 0 ) {
                             //加入集合中
@@ -114,6 +114,82 @@ public class Dependency {
         ).start();
         latch.await();
         return higherList;
+    }
+
+    // TODO: 15/11/2022 依赖的传递依赖
+    public void getTransitiveDeps() throws InterruptedException{
+        CountDownLatch latch = new CountDownLatch(1);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                //线程休眠
+                sleep();
+                //获取到mvnrepository上的依赖的网址
+                String address = LocalAddress + getGroupId() + "/" + getArtifactId() + "/" + getVersion();
+                System.out.println("爬取" + address);
+                Response response = HttpUtil.getHttp(address);
+                //如果页面返回response不为null 说明响应成功 才能继续
+                if (response != null) {
+                    String html = null;
+                    try {
+                        html = response.body().string();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    Document doc = Jsoup.parse(html);
+                    //获取传递依赖 compile dependencies 直至为0
+                    //获取tag为h2的，
+                    Elements elements = doc.getElementsByClass("version-section");
+                    //获取到compile dependencies
+                    Element e = elements.get(0);
+                    int num = getCompileDepsNum(e);
+                    if(num == 0) {
+                        System.out.println(getArtifactId()  + "的传递依赖不存在");
+                    }else{
+                        //将传递依赖加入subDependency
+                        subDependency = getCompileDeps(e);
+                    }
+                } else {
+                    System.out.println("获取网页失败，请重试！");
+                }
+                latch.countDown();
+            }
+        }
+        ).start();
+        latch.await();
+
+    }
+
+    private List<Dependency> getCompileDeps(Element e) {
+        List<Dependency> subDependency = new ArrayList<>();
+        Elements trs = e.getElementsByTag("tr");
+        for(int i = 1; i < trs.size(); i++) {
+            Element td = trs.get(i);
+            Elements tds = td.getElementsByTag("td");
+            Element info = tds.get(2);
+            Elements idInfo = info.select("a[href]");
+            String groupId = idInfo.get(0).text();
+            String artifactId = idInfo.get(1).text();
+            String version =  td.getElementsByClass("vbtn").text();
+            //获取其传递依赖
+            Dependency dependency = new Dependency(groupId, artifactId, version);
+            //加入集合中
+            subDependency.add(dependency);
+        }
+        return subDependency;
+    }
+
+    /**
+     * 获取传递依赖的数量
+     * @param e
+     * @return
+     */
+    private int getCompileDepsNum(Element e) {
+        Elements elements = e.getElementsByTag("h2");
+        String eText = elements.get(0).text();
+        int index = eText.indexOf("(");
+        String num = eText.substring(index+1, eText.length()-1);
+        return Integer.parseInt(num);
     }
 
     private void sleep() {

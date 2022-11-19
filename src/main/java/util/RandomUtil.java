@@ -1,8 +1,8 @@
 package util;
 
 public class RandomUtil {
-    private static int min = 3000; // 定义随机数的最小值
-    private static int max = 10000; // 定义随机数的最大值
+    private static int min = 10000; // 定义随机数的最小值
+    private static int max = 12000; // 定义随机数的最大值
 
     public static int getRandomNum() {
         // 产生一个min~max的数
