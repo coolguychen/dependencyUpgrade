@@ -1,6 +1,7 @@
 package core;
 
 import model.Dependency;
+import model.DependencyTree;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
@@ -24,6 +25,9 @@ public class Procedure {
 
     //项目路径
     private String filePath;
+
+    //项目的依赖树
+    private DependencyTree dependencyTree;
 
     /**
      * @param init
@@ -188,14 +192,14 @@ public class Procedure {
 
     private void constructTree(List<Dependency> dependencyList) {
         for (Dependency d : dependencyList) {
+            //以依赖d为根节点构建出一棵依赖树
+            DependencyTree tree = new DependencyTree(d);
             //查看/获取其传递依赖
-            try {
-                // TODO: 19/11/2022 如果获取网页失败 需要重新获取
-                d.getTransitiveDeps();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
+            d.getTransitiveDeps(tree);
+            d.printDependency();
+            System.out.println("的依赖树如下");
+            //打印该依赖树 初使深度为1
+            tree.queryAll(d, 1);
         }
     }
 

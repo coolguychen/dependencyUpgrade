@@ -61,7 +61,12 @@ public class Dependency {
         return version;
     }
 
-    //获取该依赖更高版本
+    public List<Dependency> getSubDependency(){ return subDependency; }
+
+
+    public void printDependency(){
+        System.out.print(getGroupId() + ":" + getArtifactId() + ":" + getVersion());
+    }
 
     /**
      * 对于依赖d，获取它更高版本的集合
@@ -116,48 +121,53 @@ public class Dependency {
         return higherList;
     }
 
+    //递归
     // TODO: 15/11/2022 依赖的传递依赖
-    public void getTransitiveDeps() throws InterruptedException{
-        CountDownLatch latch = new CountDownLatch(1);
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                //线程休眠
-                sleep();
-                //获取到mvnrepository上的依赖的网址
-                String address = LocalAddress + getGroupId() + "/" + getArtifactId() + "/" + getVersion();
-                System.out.println("爬取" + address);
-                Response response = HttpUtil.getHttp(address);
-                //如果页面返回response不为null 说明响应成功 才能继续
-                if (response != null) {
-                    String html = null;
-                    try {
-                        html = response.body().string();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    Document doc = Jsoup.parse(html);
-                    //获取传递依赖 compile dependencies 直至为0
-                    //获取tag为h2的，
-                    Elements elements = doc.getElementsByClass("version-section");
-                    //获取到compile dependencies
-                    Element e = elements.get(0);
-                    int num = getCompileDepsNum(e);
-                    if(num == 0) {
-                        System.out.println(getArtifactId()  + "的传递依赖不存在");
-                    }else{
-                        //将传递依赖加入subDependency
-                        subDependency = getCompileDeps(e);
-                    }
-                } else {
-                    System.out.println("获取网页失败，请重试！");
-                }
-                latch.countDown();
-            }
-        }
-        ).start();
-        latch.await();
 
+    /**
+     * 依赖的传递依赖
+     * @return 该依赖的全部传递依赖
+     */
+    public void getTransitiveDeps(DependencyTree dpTree){
+        sleep();
+        //获取到mvnrepository上的依赖的网址
+        String address = LocalAddress + getGroupId() + "/" + getArtifactId() + "/" + getVersion();
+        System.out.println("爬取" + address);
+        Response response = HttpUtil.getHttp(address);
+        //如果页面返回response不为null 说明响应成功 才能继续
+        if (response != null) {
+            String html = null;
+            try {
+                html = response.body().string();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            Document doc = Jsoup.parse(html);
+            //获取传递依赖 compile dependencies 直至为0 退出
+            //获取tag为h2的，
+            Elements elements = doc.getElementsByClass("version-section");
+            //获取到compile dependencies
+            Element e = elements.get(0);
+            int num = getCompileDepsNum(e);
+            if(num == 0) {
+                System.out.println(getArtifactId()  + "的传递依赖不存在");
+                return; //递归终止条件
+            }else{
+                //将传递依赖加入subDependency
+                subDependency = getCompileDeps(e);
+                List<DependencyTree> subTree = new ArrayList<>();
+                //递归获取传递依赖
+                for (Dependency d: subDependency) {
+                    DependencyTree tree = new DependencyTree(d);
+                    subTree.add(tree);
+                    d.getTransitiveDeps(dpTree);
+                }
+                dpTree.setChildList(subTree); //设置子树
+            }
+        } else {
+            System.out.println("获取网页失败，请重试！");
+            getTransitiveDeps(dpTree);
+        }
     }
 
     private List<Dependency> getCompileDeps(Element e) {
@@ -166,11 +176,14 @@ public class Dependency {
         for(int i = 1; i < trs.size(); i++) {
             Element td = trs.get(i);
             Elements tds = td.getElementsByTag("td");
+            //groupId & artifactId在td[2]
             Element info = tds.get(2);
             Elements idInfo = info.select("a[href]");
             String groupId = idInfo.get(0).text();
             String artifactId = idInfo.get(1).text();
-            String version =  td.getElementsByClass("vbtn").text();
+            //version -- td[3]
+            Element verElement = tds.get(3);
+            String version = verElement.text();
             //获取其传递依赖
             Dependency dependency = new Dependency(groupId, artifactId, version);
             //加入集合中
