@@ -1,14 +1,15 @@
 package model;
 
-import okhttp3.Response;
+import database.JDBC;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import util.HttpUtil;
-import util.RandomUtil;
 
 import java.io.IOException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -61,15 +62,18 @@ public class Dependency {
         return version;
     }
 
-    public List<Dependency> getSubDependency(){ return subDependency; }
+    public List<Dependency> getSubDependency() {
+        return subDependency;
+    }
 
 
-    public void printDependency(){
+    public void printDependency() {
         System.out.print(getGroupId() + ":" + getArtifactId() + ":" + getVersion());
     }
 
     /**
      * 对于依赖d，获取它更高版本的集合
+     *
      * @return higherSet
      * @throws InterruptedException
      */
@@ -79,31 +83,28 @@ public class Dependency {
             @Override
             public void run() {
                 //线程休眠
-                sleep();
+//                sleep();
                 //获取到mvnrepository上的依赖的网址
                 String address = LocalAddress + getGroupId() + "/" + getArtifactId();
-                System.out.println("爬取" + address);
-                Response response = HttpUtil.getHttp(address);
+                String html = null;
+                try {
+                    html = HttpUtil.getHttp(address);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
                 //如果页面返回response不为null 说明响应成功 才能继续
-                if (response != null) {
-                    String html = null;
-                    try {
-                        html = response.body().string();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                if (html != null) {
                     Document doc = Jsoup.parse(html);
                     //根据class标签名获取到版本号
                     for (Element e : doc.getElementsByClass("vbtn")) {
                         String text = e.text();
                         //如何判断是更高的依赖？——如果 version(当前版本) <= text 且字符串长度小于等于
-                        if (version.length() <= text.length() && version.compareTo(text) < 0 ) {
+                        if (version.length() <= text.length() && version.compareTo(text) < 0) {
                             //加入集合中
                             higherVersions.add(text);
                             higherList.add(new Dependency(groupId, artifactId, text));
                             System.out.println("获取到" + artifactId + "的更高版本:" + text);
-                        }
-                        else{
+                        } else {
                             //如果遇到了小于自身的依赖 退出循环？
                             break;
                         }
@@ -126,22 +127,29 @@ public class Dependency {
 
     /**
      * 依赖的传递依赖
+     *
      * @return 该依赖的全部传递依赖
      */
-    public void getTransitiveDeps(DependencyTree dpTree){
-        sleep();
-        //获取到mvnrepository上的依赖的网址
-        String address = LocalAddress + getGroupId() + "/" + getArtifactId() + "/" + getVersion();
-        System.out.println("爬取" + address);
-        Response response = HttpUtil.getHttp(address);
-        //如果页面返回response不为null 说明响应成功 才能继续
-        if (response != null) {
-            String html = null;
+    public void getTransitiveDeps(DependencyTree dpTree) {
+        String html = null;
+        // TODO: 28/11/2022 判断该依赖是否存在于数据库中，如果存在可以直接读取其html
+        JDBC jdbc = new JDBC();
+        boolean res = jdbc.query(groupId, artifactId, version);
+        //如果在数据库中存在
+        if (res == true) {
+            html = jdbc.getHtml();
+        } else {
+            //获取到mvnrepository上的依赖的网址
+            String address = LocalAddress + getGroupId() + "/" + getArtifactId() + "/" + getVersion();
             try {
-                html = response.body().string();
+                html = HttpUtil.getHttp(address);
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        }
+        //如果页面返回response不为null 说明解析html 才能继续
+        //解析html得到传递依赖
+        if (html != null) {
             Document doc = Jsoup.parse(html);
             //获取传递依赖 compile dependencies 直至为0 退出
             //获取tag为h2的，
@@ -149,31 +157,32 @@ public class Dependency {
             //获取到compile dependencies
             Element e = elements.get(0);
             int num = getCompileDepsNum(e);
-            if(num == 0) {
-                System.out.println(getArtifactId()  + "的传递依赖不存在");
-                return; //递归终止条件
-            }else{
+            if (num != 0) {
                 //将传递依赖加入subDependency
                 subDependency = getCompileDeps(e);
                 List<DependencyTree> subTree = new ArrayList<>();
                 //递归获取传递依赖
-                for (Dependency d: subDependency) {
+                for (Dependency d : subDependency) {
                     DependencyTree tree = new DependencyTree(d);
                     subTree.add(tree);
                     d.getTransitiveDeps(dpTree);
                 }
                 dpTree.setChildList(subTree); //设置子树
+            } else { //若num为0 退出
+                System.out.println(getArtifactId() + "的传递依赖不存在");
+                return; //递归终止条件
             }
         } else {
             System.out.println("获取网页失败，请重试！");
             getTransitiveDeps(dpTree);
         }
+
     }
 
-    private List<Dependency> getCompileDeps(Element e) {
+    public List<Dependency> getCompileDeps(Element e) {
         List<Dependency> subDependency = new ArrayList<>();
         Elements trs = e.getElementsByTag("tr");
-        for(int i = 1; i < trs.size(); i++) {
+        for (int i = 1; i < trs.size(); i++) {
             Element td = trs.get(i);
             Elements tds = td.getElementsByTag("td");
             //groupId & artifactId在td[2]
@@ -194,24 +203,15 @@ public class Dependency {
 
     /**
      * 获取传递依赖的数量
+     *
      * @param e
      * @return
      */
-    private int getCompileDepsNum(Element e) {
+    public int getCompileDepsNum(Element e) {
         Elements elements = e.getElementsByTag("h2");
         String eText = elements.get(0).text();
         int index = eText.indexOf("(");
-        String num = eText.substring(index+1, eText.length()-1);
+        String num = eText.substring(index + 1, eText.length() - 1);
         return Integer.parseInt(num);
     }
-
-    private void sleep() {
-        try {
-            int randomNum = new RandomUtil().getRandomNum();
-            Thread.sleep(randomNum);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
 }

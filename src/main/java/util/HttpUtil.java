@@ -1,61 +1,74 @@
 package util;
 
-import okhttp3.*;
-import org.jetbrains.annotations.NotNull;
+
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.ParseException;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 
 import java.io.IOException;
-import java.net.ConnectException;
-import java.net.SocketTimeoutException;
-import java.util.concurrent.TimeUnit;
 
 public class HttpUtil {
     //固定范式访问网址
     public static final String LocalAddress = "https://mvnrepository.com/artifact/";
 
-    public static Response getHttp(String address){
-        //随机获取一个user-agent
+
+    /**
+     * 返回获取网页后得到的html string
+     * @param address
+     * @return
+     */
+    /**
+     * 返回获取网页后得到的html string
+     * @param address
+     * @return
+     */
+    public static String getHttp(String address) throws IOException {
+        String result = null;
         UserAgentUtil userAgentUtil = new UserAgentUtil();
+        //随机获取一个user-agent
         String userAgent = userAgentUtil.getUserAgent();
-        OkHttpClient client = new OkHttpClient.Builder()
-                .connectTimeout(180, TimeUnit.SECONDS) //设置连接超时时间为180秒（三分钟
-                .readTimeout(180, TimeUnit.SECONDS)
-                .build();
-        Request request = new Request.Builder().url(address).addHeader("User-Agent", userAgent).build();
-        client.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
-//                System.out.println("页面响应成功！");
-            }
-
-            @Override
-            public void onFailure(@NotNull Call call, @NotNull IOException e) {
-                if(e instanceof SocketTimeoutException){//判断超时异常 如果超时
-                    System.out.println("该页面超时未响应");
-                }
-                if(e instanceof ConnectException){//判断连接异常，我这里是报Failed to connect to 10.7.5.144
-                    System.out.println("该页面连接异常");
-                }
-            }
-        });
-
-        //执行请求
-        try {
-            Response response = client.newCall(request).execute();
-            System.out.println("页面返回码：" + response.code());
-            if (response.code() == 200) {
-                System.out.println("页面获取成功");
-                return response;
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            if(e instanceof SocketTimeoutException){//判断超时异常
-                System.out.println("该页面超时未响应");
-            }
-            if(e instanceof ConnectException){//判断连接异常，我这里是报Failed to connect to 10.7.5.144
-                System.out.println("该页面连接异常");
+        //创建httpClient实例
+        CloseableHttpClient httpClient = HttpClients.createDefault();
+        //创建httpGet实例
+        HttpGet httpGet = new HttpGet(address);
+        System.out.println("正在爬取：" + address);
+        httpGet.setHeader("User-Agent",userAgent);
+//        httpGet.setHeader("User-Agent","Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:0.9.4)");
+        CloseableHttpResponse response = httpClient.execute(httpGet);
+        sleep(); //休眠一段时间
+        int code = response.getCode();
+        System.out.println("页面状态码：" + code);
+        //状态返回码为200才可继续
+        if (response != null && code == 200){
+            HttpEntity entity =  response.getEntity();  //获取网页内容
+            try {
+                result = EntityUtils.toString(entity, "UTF-8");
+            } catch (ParseException e) {
+                e.printStackTrace();
             }
         }
-        return null;
+        if (response != null){
+            response.close();
+        }
+        if (httpClient != null){
+            httpClient.close();
+        }
+        return result;
     }
+
+
+    public static void sleep() {
+        try {
+            int randomNum = new RandomUtil().getRandomNum();
+            Thread.sleep(randomNum);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
 }

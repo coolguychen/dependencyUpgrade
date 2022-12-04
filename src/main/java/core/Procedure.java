@@ -8,6 +8,7 @@ import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -187,10 +188,11 @@ public class Procedure {
         //对每一个结果集 首先构建依赖树
         for (List<Dependency> dependencyList : resultSet) {
             constructTree(dependencyList);
+            // TODO: 4/12/2022 关于依赖冲突的判断，在一个新的pom.xml执行mvn dependency:tree 查看是否存在冲突，就不用手动解析依赖树 
         }
     }
 
-    private void constructTree(List<Dependency> dependencyList) {
+    public void constructTree(List<Dependency> dependencyList) {
         for (Dependency d : dependencyList) {
             //以依赖d为根节点构建出一棵依赖树
             DependencyTree tree = new DependencyTree(d);
@@ -201,6 +203,18 @@ public class Procedure {
             //打印该依赖树 初使深度为1
             tree.queryAll(d, 1);
         }
+    }
+
+    public void defaultTest(){
+        Dependency d11 = new Dependency("org.apache.httpcomponents","httpclient","4.5.12");
+        Dependency d12 = new Dependency("org.apache.httpcomponents","httpclient","4.5.13");
+        Dependency d21 = new Dependency("org.apache.poi","poi-ooxml","5.1.0");
+        Dependency d22 = new Dependency("org.apache.poi","poi-ooxml","5.2.0");
+        List<Dependency> list1 = Arrays.asList(d11, d21);
+        List<Dependency> list2 = Arrays.asList(d11, d22);
+        List<Dependency> list3 = Arrays.asList(d12, d21);
+        List<Dependency> list4 = Arrays.asList(d12, d22);
+        resultSet.addAll(Arrays.asList(list1,list2,list3,list4));
     }
 
 
