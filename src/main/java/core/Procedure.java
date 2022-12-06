@@ -6,7 +6,10 @@ import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
+import util.IOUtil;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -15,6 +18,7 @@ import java.util.List;
  * 解析的过程体
  */
 public class Procedure {
+
     //解析出来的项目的依赖的集合
     private List<Dependency> dependencySet = new ArrayList<>();
 
@@ -25,7 +29,9 @@ public class Procedure {
     private List<List<Dependency>> resultSet = new ArrayList<>();
 
     //项目路径
-    private String filePath;
+    private String projectPath;
+
+    private static String filePath = "D:\\Graduation Project";
 
     //项目的依赖树
     private DependencyTree dependencyTree;
@@ -34,7 +40,7 @@ public class Procedure {
      * @param init
      */
     public Procedure(Init init) {
-        filePath = init.getFilePath();
+        projectPath = init.getFilePath();
     }
 
     /**
@@ -46,7 +52,7 @@ public class Procedure {
         SAXReader sr = new SAXReader();
         try {
             //pom.xml文件
-            Document document = sr.read(filePath + "/pom.xml");
+            Document document = sr.read(projectPath + "/pom.xml");
             Element root = document.getRootElement();
             Element dependencies = root.element("dependencies"); //获取到dependencies的字段
             List<Element> list = dependencies.elements(); //dependencies下的子元素
@@ -187,34 +193,39 @@ public class Procedure {
     public void conflictDetect() {
         //对每一个结果集 首先构建依赖树
         for (List<Dependency> dependencyList : resultSet) {
-            constructTree(dependencyList);
-            // TODO: 4/12/2022 关于依赖冲突的判断，在一个新的pom.xml执行mvn dependency:tree 查看是否存在冲突，就不用手动解析依赖树 
+            // TODO: 4/12/2022 关于依赖冲突的判断，在一个新的pom.xml执行mvn dependency:tree 查看是否存在冲突，就不用手动解析依赖树
+            IOUtil ioUtil = new IOUtil();
+            ioUtil.writeXmlByDom4J(dependencyList);
+            //根据生成的pom文件，执行mvn命令行 解析出依赖树
+            ioUtil.constructTree();
         }
     }
 
-    public void constructTree(List<Dependency> dependencyList) {
-        for (Dependency d : dependencyList) {
-            //以依赖d为根节点构建出一棵依赖树
-            DependencyTree tree = new DependencyTree(d);
-            //查看/获取其传递依赖
-            d.getTransitiveDeps(tree);
-            d.printDependency();
-            System.out.println("的依赖树如下");
-            //打印该依赖树 初使深度为1
-            tree.queryAll(d, 1);
-        }
-    }
+//    public void constructTree(List<Dependency> dependencyList) {
+//
+//        for (Dependency d : dependencyList) {
+//            //以依赖d为根节点构建出一棵依赖树
+//            DependencyTree tree = new DependencyTree(d);
+//            //查看/获取其传递依赖
+//            d.getTransitiveDeps(tree);
+//            d.printDependency();
+//            System.out.println("的依赖树如下");
+//            //打印该依赖树 初使深度为1
+//            tree.queryAll(d, 1);
+//        }
+//    }
+    
 
-    public void defaultTest(){
-        Dependency d11 = new Dependency("org.apache.httpcomponents","httpclient","4.5.12");
-        Dependency d12 = new Dependency("org.apache.httpcomponents","httpclient","4.5.13");
-        Dependency d21 = new Dependency("org.apache.poi","poi-ooxml","5.1.0");
-        Dependency d22 = new Dependency("org.apache.poi","poi-ooxml","5.2.0");
+    public void defaultTest() {
+        Dependency d11 = new Dependency("org.apache.httpcomponents", "httpclient", "4.5.12");
+        Dependency d12 = new Dependency("org.apache.httpcomponents", "httpclient", "4.5.13");
+        Dependency d21 = new Dependency("org.apache.poi", "poi-ooxml", "5.1.0");
+        Dependency d22 = new Dependency("org.apache.poi", "poi-ooxml", "5.2.0");
         List<Dependency> list1 = Arrays.asList(d11, d21);
         List<Dependency> list2 = Arrays.asList(d11, d22);
         List<Dependency> list3 = Arrays.asList(d12, d21);
         List<Dependency> list4 = Arrays.asList(d12, d22);
-        resultSet.addAll(Arrays.asList(list1,list2,list3,list4));
+        resultSet.addAll(Arrays.asList(list1, list2, list3, list4));
     }
 
 

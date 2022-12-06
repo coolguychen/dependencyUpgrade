@@ -66,7 +66,6 @@ public class Dependency {
         return subDependency;
     }
 
-
     public void printDependency() {
         System.out.print(getGroupId() + ":" + getArtifactId() + ":" + getVersion());
     }
@@ -122,8 +121,6 @@ public class Dependency {
         return higherList;
     }
 
-    //递归
-    // TODO: 15/11/2022 依赖的传递依赖
 
     /**
      * 依赖的传递依赖

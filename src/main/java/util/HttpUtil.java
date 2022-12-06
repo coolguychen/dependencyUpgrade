@@ -1,13 +1,11 @@
 package util;
 
-
-import org.apache.hc.client5.http.classic.methods.HttpGet;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.core5.http.HttpEntity;
-import org.apache.hc.core5.http.ParseException;
-import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.http.HttpEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
 
@@ -40,16 +38,13 @@ public class HttpUtil {
 //        httpGet.setHeader("User-Agent","Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:0.9.4)");
         CloseableHttpResponse response = httpClient.execute(httpGet);
         sleep(); //休眠一段时间
-        int code = response.getCode();
+        int code = response.getStatusLine().getStatusCode();
         System.out.println("页面状态码：" + code);
         //状态返回码为200才可继续
         if (response != null && code == 200){
             HttpEntity entity =  response.getEntity();  //获取网页内容
-            try {
-                result = EntityUtils.toString(entity, "UTF-8");
-            } catch (ParseException e) {
-                e.printStackTrace();
-            }
+            result = EntityUtils.toString(entity, "UTF-8");
+//            System.out.println("网页内容:"+result);
         }
         if (response != null){
             response.close();
