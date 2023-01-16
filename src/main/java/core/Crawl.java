@@ -18,6 +18,7 @@ import static util.HttpUtil.LocalAddress;
 
 public class Crawl {
     private static String local = "https://mvnrepository.com/artifact/";
+    private static String javaDoc = "https://www.javadoc.io/doc/";
     //常用库的地址
     private static String[] address = {
             "commons-io/commons-io",
@@ -110,6 +111,24 @@ public class Crawl {
         }
     }
 
+
+    public static void crawlJavaDoc(String groupId, String artifactId, String version){
+        sleep();
+        String link = javaDoc + groupId + "/" + artifactId + "/" + version + "/index.html";
+        //设置驱动
+        System.setProperty("webdriver.chrome.driver", "D:\\chromedriver(2).exe");
+        //创建驱动
+        WebDriver driver = new ChromeDriver();
+        //与将要爬取的网站建立连接
+        driver.get(link);
+        //获取网页源代码
+        String html = driver.getPageSource();
+        System.out.println(html);
+        JDBC jdbc = new JDBC();
+        //将该依赖的javadoc插入数据库
+        driver.close();
+    }
+
     public static void sleep() {
         try {
             Thread.sleep(new RandomUtil().getRandomNum());
@@ -120,6 +139,7 @@ public class Crawl {
 
 
     public static void main(String[] args) {
-        startCrawl();
+
+        crawlJavaDoc("com.google.code.gson","gson","2.2.4");
     }
 }

@@ -12,6 +12,10 @@ public class Main {
 //        init.inputPath();
         //创建一个解析的过程体
         Procedure procedure = new Procedure(init);
+
+
+        // TODO: 16/1/2023 单模块or多模块判断 
+        
         //解析pom文件
 //        procedure.parsePom();
         //对于每一个依赖，向上搜索
@@ -24,8 +28,11 @@ public class Main {
         procedure.printRes();
 //        ---------------
 
-        // TODO: 9/11/2022 冲突检测&筛选
+        
+        // TODO: 16/1/2023 Maven多模块依赖冲突检测 
         procedure.conflictDetect();
+
+        // TODO: 3/1/2023 API兼容性判断 
     }
 
 }

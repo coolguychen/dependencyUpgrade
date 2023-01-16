@@ -163,38 +163,7 @@ public class IOUtil {
     }
 
 
-    /**
-     * 根据pom文件执行命令行：mvn dependency:tree -Dverbose生成tree.txt
-     */
-    public static void constructTree() {
-        try {
-            Runtime runtime = Runtime.getRuntime();
-            System.out.println("正在构造依赖关系......");
-            runtime.exec(new String[]{"cmd", "/c", "mvn dependency:tree -Dverbose > tree.txt"}, null, new File(filePath));
-            System.out.println("构造完毕，输出tree.txt");
-            printTree();
 
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 
-    public static void printTree() {
-        try {
-            //读入流 读取tree.txt 并打印
-            InputStreamReader reader = new InputStreamReader(
-                    new FileInputStream(treePath)); // 建立一个输入流对象reader
-            BufferedReader br = new BufferedReader(reader); // 建立一个对象，它把文件内容转成计算机能读懂的语言
-            String line = "";
-            while (line != null) {
-                line = br.readLine(); // 一次读入一行数据
-                System.out.println(line);
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 
 }

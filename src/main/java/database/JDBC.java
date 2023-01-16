@@ -52,7 +52,7 @@ public class JDBC {
 //        startUp();
         try {
             //SELECT count(*) from library where groupId = "com.google.guava" AND artifactId = "guava";
-            String sql = "SELECT * from library where groupId = \"" + groupId  + "\""
+            String sql = "SELECT * from library_info where groupId = \"" + groupId  + "\""
                     +  " AND artifactId = \"" + artifactId  + "\"" +
                     " AND version = \"" + version + "\"" +  ";";
 
@@ -94,7 +94,7 @@ public class JDBC {
             try {
                 String html = content.replaceAll("\"","\"\"");
 
-                String sql = "insert into library (groupId, artifactId, version, javadoc, content) values (\""  + groupId + "\", \"" + artifactId + "\", \"" + version + "\",\"" + javadoc + "\", \"" + html +"\" );";
+                String sql = "insert into library_info (groupId, artifactId, version, javadoc, content) values (\""  + groupId + "\", \"" + artifactId + "\", \"" + version + "\",\"" + javadoc + "\", \"" + html +"\" );";
                 stmt = conn.createStatement();
                 //执行插入语句
                 int resultSet=stmt.executeUpdate(sql);
@@ -124,6 +124,16 @@ public class JDBC {
         }
     }
 
+    /**
+     * 修改该依赖的javadoc
+     * @param groupId
+     * @param artifactId
+     * @param version
+     */
+    public void insertJavaDoc(String groupId, String artifactId, String version){
+
+    }
+
     //最后关闭数据库资源
     public void closeOff(){
         // 关闭资源
@@ -136,6 +146,10 @@ public class JDBC {
         } catch (SQLException se) {
             se.printStackTrace();
         }
+    }
+
+    public static void main(String[] args) {
+
     }
 
 

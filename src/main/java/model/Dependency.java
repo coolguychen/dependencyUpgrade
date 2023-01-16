@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
@@ -20,9 +21,14 @@ import static util.HttpUtil.LocalAddress;
  * 依赖/第三方包的结构
  */
 public class Dependency {
+    private int id;
     private String groupId; //该依赖的groupId
     private String artifactId; //该依赖的artifactId
     private String version; //该依赖的当前版本
+    private boolean conflict;
+    private boolean duplicate;
+    private int depth;
+    private Dependency parentDependency;
     private List<String> higherVersions; //该依赖对应的更高版本
     private List<Dependency> higherList; //该依赖对应的更高依赖的集合
     //间接依赖
@@ -30,6 +36,24 @@ public class Dependency {
 
     public List<String> getHigherVersions() {
         return higherVersions;
+    }
+
+    /**
+     * 构造函数
+     * @param id 记为出现的顺序
+     * @param groupId
+     * @param artifactId
+     * @param version
+     * @param depth 深度
+     * @param parentDependency 父依赖是谁
+     */
+    public Dependency(int id, String groupId, String artifactId, String version, int depth, Dependency parentDependency) {
+        this.id = id;
+        this.groupId = groupId;
+        this.artifactId = artifactId;
+        this.version = version;
+        this.depth = depth;
+        this.parentDependency = parentDependency;
     }
 
     /**
@@ -43,11 +67,14 @@ public class Dependency {
         this.groupId = groupId;
         this.artifactId = artifactId;
         this.version = version;
-//        this.higherSet = new DependencySet();
         this.higherList = new ArrayList<>();
         this.higherVersions = new ArrayList<>();
         //把当前依赖的版本加进去
         this.higherVersions.add(version);
+    }
+
+    public Dependency(){
+
     }
 
     public String getGroupId() {
@@ -66,8 +93,36 @@ public class Dependency {
         return subDependency;
     }
 
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
+    }
+
+    public int getDepth() {
+        return depth;
+    }
+
+    public void setDepth(int depth) {
+        this.depth = depth;
+    }
+
+    public Dependency getParentDependency() {
+        return parentDependency;
+    }
+
+    public boolean isConflict() {
+        return conflict;
+    }
+
     public void printDependency() {
-        System.out.print(getGroupId() + ":" + getArtifactId() + ":" + getVersion());
+        System.out.println(getGroupId() + ":" + getArtifactId() + ":" + getVersion());
     }
 
     /**
