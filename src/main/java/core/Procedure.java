@@ -1,5 +1,6 @@
 package core;
 
+import com.beust.ah.A;
 import model.Dependency;
 import model.DependencyTree;
 import org.dom4j.Document;
@@ -15,6 +16,10 @@ import java.util.*;
  * 解析的过程体
  */
 public class Procedure {
+    private enum Type {single, multiple}
+
+    //项目的模块类型
+    private Type type;
 
     //解析出来的项目的依赖的集合
     private List<Dependency> dependencySet = new ArrayList<>();
@@ -50,6 +55,54 @@ public class Procedure {
         projectPath = init.getFilePath();
     }
 
+    public void checkType() {
+        int cnt = recursive(projectPath);
+        if (cnt > 1) type = Type.multiple;
+        else type = Type.single;
+    }
+
+    private int recursive(String path) {
+        int num = 0;
+        File file = new File(path);
+        File pom_file = new File(path + "/pom.xml");
+        //若pom文件不存在
+        if (!pom_file.exists()) {
+            System.out.println("该路径下无pom.xml");
+            return 0;
+        }
+        //若存在
+        else {
+            //列出目录下的文件
+            File[] fs = file.listFiles();
+            for (File f : fs) {
+                if (f.isDirectory())    //若是目录，则递归查看是否存在pom文件
+                    num = 1 + recursive(f.getPath());
+            }
+            return num;
+        }
+    }
+
+    /**
+     * 项目升级程序
+     */
+    public void upgradeProject(){
+        if(type == Type.single) {
+            SingleModule single = new SingleModule(projectPath);
+            //调用单模块的解决方案
+            single.singleModuleUpgrade();
+        }
+        else {
+            MultipleModule multi = new MultipleModule(projectPath);
+            //调用多模块的解决方案
+            multi.multipleModuleUpgrade();
+        }
+    }
+
+
+
+
+
+
     /**
      * 通过项目的pom文件得到依赖。
      */
@@ -74,6 +127,7 @@ public class Procedure {
 //                System.out.println("groupId为：" + groupId);
                     String artifactId = dependency.element("artifactId").getText();
 //                System.out.println("artifactId为："+artifactId);
+                    // TODO: 4/2/2023 关于${version}的解析
                     String version = dependency.element("version").getText();
 //                System.out.println("版本号为：" + version);
                     //新建一个Dependency
@@ -265,18 +319,15 @@ public class Procedure {
                         }
                     }
                 });
-                // TODO: 21/12/2022 最后跟实际的加载的依赖进行比较 实际加载的版本如何获取？
-
                 Dependency latestDep = conflictDepList.get(conflictDepList.size() - 1);
                 System.out.print("最后获得最新版本的依赖为：");
                 latestDep.printDependency();
-
                 List<Dependency> resList = tree.getResList();
                 for (Dependency dependency : resList) {
                     if (dependency.getGroupId().equals(groupId) && dependency.getArtifactId().equals(artifactId)) {
                         System.out.println("与实际加载的依赖版本进行比较");
                         //如果实际加载的版本更新
-                        if(dependency.getVersion().compareTo(latestDep.getVersion()) > 0 ) {
+                        if (dependency.getVersion().compareTo(latestDep.getVersion()) > 0) {
                             System.out.println("保留原来加载的版本");
                         }
                         //否则需要exclude实际加载的依赖
@@ -285,7 +336,6 @@ public class Procedure {
                             dependency.printDependency();
                             if (conflictDepList.size() == 1) {
                                 //如果map里面只有一个特殊处理？
-                                // TODO: 30/12/2022 conflictMap中只有一个元素的情况
                                 System.out.println("加载跳过");
                             } else {
                                 for (int i = 0; i < conflictDepList.size() - 1; i++) {
@@ -309,7 +359,6 @@ public class Procedure {
     /**
      * 对所要加载依赖结果集，他们的javadoc和
      */
-
 
 
     public void defaultTest() {
