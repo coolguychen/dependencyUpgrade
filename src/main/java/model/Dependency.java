@@ -1,6 +1,8 @@
 package model;
 
+import core.Crawl;
 import database.JDBC;
+import org.checkerframework.checker.units.qual.C;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -132,6 +134,7 @@ public class Dependency {
      * @throws InterruptedException
      */
     public List<Dependency> getHigherDependencyList() throws InterruptedException {
+        // TODO: 7/2/2023 用selenium爬取网页信息
         CountDownLatch latch = new CountDownLatch(1);
         new Thread(new Runnable() {
             @Override
@@ -140,12 +143,14 @@ public class Dependency {
 //                sleep();
                 //获取到mvnrepository上的依赖的网址
                 String address = LocalAddress + getGroupId() + "/" + getArtifactId();
-                String html = null;
-                try {
-                    html = HttpUtil.getHttp(address);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
+                Crawl crawl = new Crawl();
+                //用selenium爬取网页
+                String html = crawl.getPageSource(address);
+//                try {
+//                    html = HttpUtil.getHttp(address);
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
                 //如果页面返回response不为null 说明响应成功 才能继续
                 if (html != null) {
                     Document doc = Jsoup.parse(html);

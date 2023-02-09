@@ -109,7 +109,7 @@ public class IOUtil {
         Element element33 = dependency2.addElement("version");
         element33.addText("1.7.25");
 
-        writeXml(document);
+        writeXml(document,pomPath);
 
     }
 
@@ -118,7 +118,7 @@ public class IOUtil {
      *
      * @param document
      */
-    public static void writeXml(Document document) {
+    public static void writeXml(Document document, String pomPath) {
         System.out.println("写入pom.xml文件......");
         try {
             //创建文件
@@ -140,10 +140,10 @@ public class IOUtil {
 
     /**
      * 根据dependncyList构造一个新的pom文件
-     *
+     * @param pomPath
      * @param dependencyList
      */
-    public static void writeXmlByDom4J(List<Dependency> dependencyList) {
+    public static void writeXmlByDom4J(String pomPath, List<Dependency> dependencyList) {
         //子节点 dependencies
         Element dependencies = root.addElement("dependencies");
         for (Dependency dependency : dependencyList) {
@@ -159,9 +159,103 @@ public class IOUtil {
             element3.addText(version1);
         }
         //写入xml文件
-        writeXml(document);
+        writeXml(document,pomPath);
     }
 
+    /**
+     * 根据dependncyList构造一个修改pom文件
+     * @param pomPath
+     * @param dependencyList
+     */
+    public static void modifyXmlByDom4J(String pomPath, List<Dependency> dependencyList) {
+
+        /*
+         * 2.java修改xml
+         */
+        // 创建SAXReader对象
+        SAXReader sr = new SAXReader();
+        try{
+            // 关联xml
+            Document document = sr.read(pomPath);
+            // 获取根元素
+            Element root = document.getRootElement();
+            // 获取dependencies标签
+            Element dependencies = root.element("dependencies");
+            List<Element> list = dependencies.elements();
+
+            for (Dependency dependency : dependencyList) {
+                String groupId1 = dependency.getGroupId();
+                String artifactId1 = dependency.getArtifactId();
+                String version1 = dependency.getVersion();
+                for(Element e : list) {
+                    String groupId = e.element("groupId").getText();
+                    String artifactId = e.element("artifactId").getText();
+                    if(groupId1.equals(groupId) && artifactId1.equals(artifactId)) {
+                        //去除原来节点
+                        dependencies.remove(e);
+                        Element depElement = dependencies.addElement("dependency");
+                        Element element1 = depElement.addElement("groupId");
+                        element1.addText(groupId1);
+                        Element element2 = depElement.addElement("artifactId");
+                        element2.addText(artifactId1);
+                        Element element3 = depElement.addElement("version");
+                        element3.addText(version1);
+                    }
+                }
+
+            }
+            // 调用下面的静态方法完成xml的写出
+            //写入xml文件
+            writeXml(document,pomPath);
+        } catch (DocumentException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    /**
+     * 实现对文件的复制
+     * @param isFile inputFile
+     * @param osFile outputFile
+     */
+    public static void copyFile(String isFile, String osFile) {
+        InputStream is = null;
+        OutputStream os = null;
+        try {
+            is = new FileInputStream(isFile);
+            os = new FileOutputStream(osFile);
+            byte[] data = new byte[1024];//缓存容器
+            int len = -1;//接收长度
+            while((len=is.read(data))!=-1) {
+                os.write(data, 0, len);
+            }
+        } catch (FileNotFoundException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }catch(IOException e) {
+            e.printStackTrace();
+        }finally {
+            //	释放资源 分别关闭 先打开的后关闭
+            try {
+                if(null!=os) {
+                    os.close();
+                }
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+
+            }
+            try {
+                if(null!=is) {
+                    is.close();
+                }
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+
+            }
+        }
+    }
 
 
 

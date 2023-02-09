@@ -21,6 +21,9 @@ public class Procedure {
     //项目的模块类型
     private Type type;
 
+    //pom文件路径的集合
+    private static List<String> fileList = new ArrayList<>();
+
     //解析出来的项目的依赖的集合
     private List<Dependency> dependencySet = new ArrayList<>();
 
@@ -32,10 +35,6 @@ public class Procedure {
 
     //无冲突的结果集
     private List<List<Dependency>> resWithoutConflict = new ArrayList<>();
-
-//    //结果集对应的依赖树
-//    private DependencyTree dependencyTree = new DependencyTree();
-
 
     //需要调解/升级的结果集
     private static List<DependencyTree> resToMediate = new ArrayList<>();
@@ -64,18 +63,21 @@ public class Procedure {
     private int recursive(String path) {
         int num = 0;
         File file = new File(path);
-        File pom_file = new File(path + "/pom.xml");
+        String childPath = path + "/pom.xml";
+        File pom_file = new File(childPath);
         //若pom文件不存在
         if (!pom_file.exists()) {
-            System.out.println("该路径下无pom.xml");
+//            System.out.println("该路径下无pom.xml");
             return 0;
         }
         //若存在
         else {
+            //将文件路径保存下来
+            fileList.add(childPath);
             //列出目录下的文件
             File[] fs = file.listFiles();
             for (File f : fs) {
-                if (f.isDirectory())    //若是目录，则递归查看是否存在pom文件
+                if (f.isDirectory() && !f.getName().contains("target"))    //若是目录且不是target目录，则递归查看是否存在pom文件
                     num = 1 + recursive(f.getPath());
             }
             return num;
@@ -83,150 +85,20 @@ public class Procedure {
     }
 
     /**
-     * 项目升级程序
+     * 项目升级和依赖调解程序
      */
     public void upgradeProject(){
         if(type == Type.single) {
             SingleModule single = new SingleModule(projectPath);
             //调用单模块的解决方案
             single.singleModuleUpgrade();
+            single.conflictDetect();
         }
         else {
-            MultipleModule multi = new MultipleModule(projectPath);
+            MultipleModule multi = new MultipleModule(projectPath, fileList);
             //调用多模块的解决方案
             multi.multipleModuleUpgrade();
-        }
-    }
-
-
-
-
-
-
-    /**
-     * 通过项目的pom文件得到依赖。
-     */
-    public void parsePom() {
-//        dependencySet = new DependencySet();
-        System.out.print("解析结果中...");
-        SAXReader sr = new SAXReader();
-        try {
-            //pom.xml文件
-            Document document = sr.read(projectPath + "/pom.xml");
-            Element root = document.getRootElement();
-            Element dependencies = root.element("dependencies"); //获取到dependencies的字段
-            List<Element> list = dependencies.elements(); //dependencies下的子元素
-            for (Element dependency : list) { //循环输出全部dependency的相关信息
-                Element e = dependency.element("scope");
-                if (e != null) {
-                    String scope = dependency.element("scope").getText();
-                    if (scope.equals("test") || scope.equals("runtime"))
-                        System.out.println("排除范围为" + scope + "的包");
-                } else {
-                    String groupId = dependency.element("groupId").getText();
-//                System.out.println("groupId为：" + groupId);
-                    String artifactId = dependency.element("artifactId").getText();
-//                System.out.println("artifactId为："+artifactId);
-                    // TODO: 4/2/2023 关于${version}的解析
-                    String version = dependency.element("version").getText();
-//                System.out.println("版本号为：" + version);
-                    //新建一个Dependency
-                    Dependency d = new Dependency(groupId, artifactId, version);
-                    //添加到项目依赖列表里面
-                    dependencySet.add(d);
-                }
-
-            }
-            System.out.println("获取到如下依赖：");
-            for (Dependency d : dependencySet) {
-                System.out.println(d.getArtifactId() + ":" + d.getVersion());
-            }
-        } catch (DocumentException e) {
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * 对于dependencySet中的每个dependency，获取它更高的版本
-     */
-    public void getHigherVersions() {
-        // 多线程并行 获取更高的版本
-        for (Dependency d : dependencySet) {
-            //获取到dependency更高版本的集合
-            List<Dependency> higherDependencySet = new ArrayList<>();
-            try {
-                higherDependencySet = d.getHigherDependencyList();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            while (higherDependencySet.size() == 0) {
-                try {
-                    higherDependencySet = d.getHigherDependencyList();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-            //依赖集合大小不为0
-            higherSet.add(higherDependencySet); //加入集合中
-        }
-        System.out.println("获取更高版本完毕。");
-    }
-
-    /**
-     * Discription: 笛卡尔乘积算法
-     * 把一个List{[1,2],[A,B],[a,b]} 转化成
-     * List{[1,A,a],[1,A,b],[1,B,a],[1,B,b],[2,A,a],[2,A,b],[2,B,a],[2,B,b]} 数组输出
-     *
-     * @param dimensionValue 原List
-     * @param result         通过乘积转化后的数组
-     * @param layer          中间参数
-     * @param currentList    中间参数
-     */
-    public void descartes(List<List<Dependency>> dimensionValue, List<List<Dependency>> result, int layer, List<Dependency> currentList) {
-        //中间参数小于列表
-        if (layer < dimensionValue.size() - 1) {
-            if (dimensionValue.get(layer).size() == 0) {
-                //递归
-                descartes(dimensionValue, result, layer + 1, currentList);
-            } else {
-                for (int i = 0; i < dimensionValue.get(layer).size(); i++) {
-                    List<Dependency> list = new ArrayList<Dependency>(currentList);
-                    list.add(dimensionValue.get(layer).get(i));
-                    //递归 层数+1
-                    descartes(dimensionValue, result, layer + 1, list);
-                }
-            }
-        } else if (layer == dimensionValue.size() - 1) {
-            if (dimensionValue.get(layer).size() == 0) {
-                result.add(currentList);
-            } else {
-                for (int i = 0; i < dimensionValue.get(layer).size(); i++) {
-                    List<Dependency> list = new ArrayList<Dependency>(currentList);
-                    list.add(dimensionValue.get(layer).get(i));
-                    result.add(list);
-                }
-            }
-        }
-    }
-
-    /**
-     * 获得最终结果集
-     * 多列表笛卡尔积
-     */
-    public void getResults() {
-        List<List<Dependency>> dimensionValue = higherSet;    // 原来的List
-        List<List<Dependency>> res = new ArrayList<>(); //返回集合
-        descartes(dimensionValue, res, 0, new ArrayList<>());
-        //打印结果集信息
-        for (List<Dependency> dp : res) {
-            List<Dependency> list = new ArrayList<>();
-//            System.out.println(dp.size()); //dp.size()为依赖数目
-            for (Dependency d : dp) {
-//                System.out.print(d.getGroupId() + ":" + d.getArtifactId() + ":"+ d.getVersion() + " ");
-                list.add(d);
-            }
-            //加入结果集
-            resultSet.add(list);
+            multi.conflictDetect();
         }
     }
 
@@ -247,35 +119,6 @@ public class Procedure {
         System.out.println("共有" + resultSet.size() + "个结果集。");
     }
 
-
-    /**
-     * 对result结果集中的结果进行冲突检测
-     */
-    public void conflictDetect() {
-        //对每一个结果集 首先构建依赖树
-        for (List<Dependency> dependencyList : resultSet) {
-            DependencyTree dependencyTree = new DependencyTree();
-            IOUtil ioUtil = new IOUtil();
-            ioUtil.writeXmlByDom4J(dependencyList);
-            //根据生成的pom文件，执行mvn命令行 解析出依赖树
-            dependencyTree.constructTree();
-            dependencyTree.parseTree();
-            //如果树存在conflict 加入待调解列表
-            if (dependencyTree.isConflict()) {
-                resToMediate.add(dependencyTree);
-                System.out.println("加入待调解列表！");
-            } else {
-                //否则加入无冲突结果集
-                resWithoutConflict.add(dependencyList);
-                System.out.println("无冲突，继续");
-
-            }
-        }
-        //如果无冲突的结果集不存在 进入冲突调解程序
-        if (resWithoutConflict.size() == 0) {
-            conflictMediation();
-        }
-    }
 
 //    public void constructTree(List<Dependency> dependencyList) {
 //
@@ -355,10 +198,6 @@ public class Procedure {
         }
     }
 
-
-    /**
-     * 对所要加载依赖结果集，他们的javadoc和
-     */
 
 
     public void defaultTest() {

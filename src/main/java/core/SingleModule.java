@@ -1,18 +1,20 @@
 package core;
 
 import model.Dependency;
+import model.DependencyTree;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
+import util.IOUtil;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class SingleModule {
     //单模块处理方案
 
     private static String projectPath;
+    private static String pomPath;
 
     //构造函数
     SingleModule(){
@@ -21,6 +23,7 @@ public class SingleModule {
 
     SingleModule(String path){
         projectPath = path;
+        pomPath = path + "/pom.xml";
     }
 
     //解析出来的项目的依赖的集合
@@ -34,6 +37,9 @@ public class SingleModule {
 
     //无冲突的结果集
     private List<List<Dependency>> resWithoutConflict = new ArrayList<>();
+
+    //需要调解/升级的结果集
+    private static List<DependencyTree> resToMediate = new ArrayList<>();
 
 
 
@@ -116,6 +122,7 @@ public class SingleModule {
             higherSet.add(higherDependencySet); //加入集合中
         }
         System.out.println("获取更高版本完毕。");
+
     }
 
 
@@ -177,4 +184,100 @@ public class SingleModule {
         }
     }
 
+    /**
+     * 对result结果集中的结果进行冲突检测
+     */
+    public void conflictDetect() {
+        DependencyTree dependencyTree = new DependencyTree();
+        IOUtil ioUtil = new IOUtil();
+        String backUpPath = projectPath + "/backUpPom.xml";
+        //先备份一下原有的pom文件
+        ioUtil.copyFile(pomPath, backUpPath);
+        for (List<Dependency> dependencyList : resultSet) {
+            //对于结果集中的每一项，重写pom文件并调用mvn dependency:tree
+            ioUtil.writeXmlByDom4J(pomPath, dependencyList);
+            //根据生成的pom文件，执行mvn命令行 解析出依赖树
+            dependencyTree.constructTree(projectPath);
+            dependencyTree.parseTreeSingle();
+            //如果树存在conflict 加入待调解列表
+            if (dependencyTree.isConflict()) {
+                resToMediate.add(dependencyTree);
+                System.out.println("加入待调解列表！");
+            } else {
+                //否则加入无冲突结果集
+                resWithoutConflict.add(dependencyList);
+                System.out.println("无冲突，继续");
+
+            }
+        }
+        //如果无冲突的结果集不存在 进入冲突调解程序
+        if (resWithoutConflict.size() == 0) {
+            conflictMediation();
+        }
+    }
+
+
+    public void conflictMediation() {
+        //待冲突调解的结果集合
+        for (DependencyTree tree : resToMediate) {
+            //获取冲突依赖的集合
+            HashMap<String[], List<Dependency>> conflictMap = tree.getConflictMap();
+            //遍历map
+            for (Map.Entry<String[], List<Dependency>> entry : conflictMap.entrySet()) {
+                List<Dependency> conflictDepList = entry.getValue(); //获取冲突的集合
+                String groupId = conflictDepList.get(0).getGroupId();
+                String artifactId = conflictDepList.get(0).getArtifactId();
+                //编写比较器 对象按照version从小到大
+                Collections.sort(conflictDepList, new Comparator<Dependency>() {
+                    @Override
+                    public int compare(Dependency o1, Dependency o2) {
+                        //选择version最大的 --version升序
+                        //如果version1 == version2,按depth比较 --depth降序
+                        //如果depth1 == depth2,按id比较 --id降序
+                        if (o1.getVersion().equals(o2.getVersion())) {
+                            if (o1.getDepth() == o2.getDepth()) {
+                                return o1.getId() - o2.getDepth();
+                            } else {
+                                return o1.getDepth() - o2.getDepth();
+                            }
+                        } else {
+                            return o2.getVersion().compareTo(o1.getVersion());
+                        }
+                    }
+                });
+                Dependency latestDep = conflictDepList.get(conflictDepList.size() - 1);
+                System.out.print("最后获得最新版本的依赖为：");
+                latestDep.printDependency();
+                List<Dependency> resList = tree.getResList();
+                for (Dependency dependency : resList) {
+                    if (dependency.getGroupId().equals(groupId) && dependency.getArtifactId().equals(artifactId)) {
+                        System.out.println("与实际加载的依赖版本进行比较");
+                        //如果实际加载的版本更新
+                        if (dependency.getVersion().compareTo(latestDep.getVersion()) > 0) {
+                            System.out.println("保留原来加载的版本");
+                        }
+                        //否则需要exclude实际加载的依赖
+                        else {
+                            System.out.print("exclude实际加载的依赖：");
+                            dependency.printDependency();
+                            if (conflictDepList.size() == 1) {
+                                //如果map里面只有一个特殊处理？
+                                System.out.println("加载跳过");
+                            } else {
+                                for (int i = 0; i < conflictDepList.size() - 1; i++) {
+                                    Dependency unLoadDependency = conflictDepList.get(i);
+                                    Dependency parent = unLoadDependency.getParentDependency();
+                                    System.out.print("建议父依赖：");
+                                    parent.printDependency();
+                                    System.out.print("需要exclude子依赖：");
+                                    unLoadDependency.printDependency();
+                                }
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
 }

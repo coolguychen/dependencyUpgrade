@@ -26,6 +26,9 @@ public class Crawl {
     };
 
 
+    /**
+     * 开始爬取常用库的最新版本的信息
+     */
     public static void startCrawl() {
         for (String link : address) {
             int index = link.lastIndexOf("/");
@@ -137,9 +140,26 @@ public class Crawl {
         }
     }
 
+    /**
+     * 获取网站的源代码。
+     * @param webLink
+     */
+    public static String getPageSource(String webLink){
+        //设置驱动
+        System.setProperty("webdriver.chrome.driver", "D:\\chromedriver(2).exe");
+        //创建驱动
+        WebDriver driver = new ChromeDriver();
+        //与将要爬取的网站建立连接
+        driver.get(webLink);
+        String html = driver.getPageSource();
+        driver.close(); //关闭当前页面
+        return html;
+    }
+
 
     public static void main(String[] args) {
 
-        crawlJavaDoc("com.google.code.gson","gson","2.2.4");
+        getPageSource("https://mvnrepository.com/artifact/org.dom4j/dom4j");
+//        crawlJavaDoc("com.google.code.gson","gson","2.2.4");
     }
 }
