@@ -13,6 +13,7 @@ import util.RandomUtil;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static util.HttpUtil.LocalAddress;
 
@@ -67,7 +68,7 @@ public class Crawl {
         //获取网页源代码
         String html = driver.getPageSource();
         JDBC jdbc = new JDBC();
-        jdbc.insert(groupId, artifactId, version, null, html);
+        jdbc.insertIntoLibraryInfo(groupId, artifactId, version, null, html);
         driver.close();
     }
 
@@ -127,7 +128,6 @@ public class Crawl {
         //获取网页源代码
         String html = driver.getPageSource();
         System.out.println(html);
-        JDBC jdbc = new JDBC();
         //将该依赖的javadoc插入数据库
         driver.close();
     }
@@ -151,6 +151,19 @@ public class Crawl {
         WebDriver driver = new ChromeDriver();
         //与将要爬取的网站建立连接
         driver.get(webLink);
+        try{
+            driver.manage().timeouts().pageLoadTimeout(10, TimeUnit.SECONDS);
+//some excecution code....
+        }
+        catch (Exception e) {
+            System.out.println("Error. Closing");
+            driver.quit();
+            try {
+                Runtime.getRuntime().exec("taskkill /F /IM chrome.exe");
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+        }
         String html = driver.getPageSource();
         driver.close(); //关闭当前页面
         return html;

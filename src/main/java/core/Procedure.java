@@ -1,15 +1,9 @@
 package core;
 
-import com.beust.ah.A;
 import model.Dependency;
 import model.DependencyTree;
-import org.dom4j.Document;
-import org.dom4j.DocumentException;
-import org.dom4j.Element;
-import org.dom4j.io.SAXReader;
-import util.IOUtil;
 
-import java.io.*;
+import java.io.File;
 import java.util.*;
 
 /**
@@ -87,18 +81,18 @@ public class Procedure {
     /**
      * 项目升级和依赖调解程序
      */
-    public void upgradeProject(){
-        if(type == Type.single) {
+    public void upgradeProject() {
+        if (type == Type.single) {
             SingleModule single = new SingleModule(projectPath);
             //调用单模块的解决方案
             single.singleModuleUpgrade();
             single.conflictDetect();
-        }
-        else {
+        } else {
             MultipleModule multi = new MultipleModule(projectPath, fileList);
             //调用多模块的解决方案
             multi.multipleModuleUpgrade();
             multi.conflictDetect();
+            multi.printRes();
         }
     }
 
@@ -133,70 +127,6 @@ public class Procedure {
 //            tree.queryAll(d, 1);
 //        }
 //    }
-
-    public void conflictMediation() {
-        //待冲突调解的结果集合
-        for (DependencyTree tree : resToMediate) {
-            //获取冲突依赖的集合
-            HashMap<String[], List<Dependency>> conflictMap = tree.getConflictMap();
-            //遍历map
-            for (Map.Entry<String[], List<Dependency>> entry : conflictMap.entrySet()) {
-                List<Dependency> conflictDepList = entry.getValue(); //获取冲突的集合
-                String groupId = conflictDepList.get(0).getGroupId();
-                String artifactId = conflictDepList.get(0).getArtifactId();
-                //编写比较器 对象按照version从小到大
-                Collections.sort(conflictDepList, new Comparator<Dependency>() {
-                    @Override
-                    public int compare(Dependency o1, Dependency o2) {
-                        //选择version最大的 --version升序
-                        //如果version1 == version2,按depth比较 --depth降序
-                        //如果depth1 == depth2,按id比较 --id降序
-                        if (o1.getVersion().equals(o2.getVersion())) {
-                            if (o1.getDepth() == o2.getDepth()) {
-                                return o1.getId() - o2.getDepth();
-                            } else {
-                                return o1.getDepth() - o2.getDepth();
-                            }
-                        } else {
-                            return o2.getVersion().compareTo(o1.getVersion());
-                        }
-                    }
-                });
-                Dependency latestDep = conflictDepList.get(conflictDepList.size() - 1);
-                System.out.print("最后获得最新版本的依赖为：");
-                latestDep.printDependency();
-                List<Dependency> resList = tree.getResList();
-                for (Dependency dependency : resList) {
-                    if (dependency.getGroupId().equals(groupId) && dependency.getArtifactId().equals(artifactId)) {
-                        System.out.println("与实际加载的依赖版本进行比较");
-                        //如果实际加载的版本更新
-                        if (dependency.getVersion().compareTo(latestDep.getVersion()) > 0) {
-                            System.out.println("保留原来加载的版本");
-                        }
-                        //否则需要exclude实际加载的依赖
-                        else {
-                            System.out.print("exclude实际加载的依赖：");
-                            dependency.printDependency();
-                            if (conflictDepList.size() == 1) {
-                                //如果map里面只有一个特殊处理？
-                                System.out.println("加载跳过");
-                            } else {
-                                for (int i = 0; i < conflictDepList.size() - 1; i++) {
-                                    Dependency unLoadDependency = conflictDepList.get(i);
-                                    Dependency parent = unLoadDependency.getParentDependency();
-                                    System.out.print("建议父依赖：");
-                                    parent.printDependency();
-                                    System.out.print("需要exclude子依赖：");
-                                    unLoadDependency.printDependency();
-                                }
-                            }
-                        }
-                        break;
-                    }
-                }
-            }
-        }
-    }
 
 
 

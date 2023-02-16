@@ -17,16 +17,10 @@ public class Main {
         // TODO: 4/2/2023 调用第三方库依赖冲突调解程序
         procedure.upgradeProject();
         //用默认的结果集继续后续测试
-        procedure.defaultTest();
+//        procedure.defaultTest();
         //打印出结果集
-        procedure.printRes();
+//        procedure.printRes();
 //        ---------------
-
-
-        // TODO: 3/2/2023 Maven多模块第三方库的升级
-        // TODO: 16/1/2023 Maven多模块依赖冲突检测
-//        procedure.conflictDetect();
-
     }
 
 }

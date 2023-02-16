@@ -13,7 +13,9 @@ import java.util.*;
 public class SingleModule {
     //单模块处理方案
 
+    //输入的项目路径
     private static String projectPath;
+    //项目路径下的pom文件路径
     private static String pomPath;
 
     //构造函数
@@ -48,7 +50,11 @@ public class SingleModule {
      */
     public void singleModuleUpgrade() {
         //解析pom文件
-        parsePom();
+        try {
+            parsePom();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         //对于每一个依赖，向上搜索
         getHigherVersions();
         //获取最终的结果集
@@ -58,7 +64,7 @@ public class SingleModule {
     /**
      * 通过项目的pom文件得到依赖。
      */
-    public void parsePom() {
+    public void parsePom() throws InterruptedException {
 //        dependencySet = new DependencySet();
         System.out.print("解析结果中...");
         SAXReader sr = new SAXReader();
@@ -198,7 +204,7 @@ public class SingleModule {
             ioUtil.writeXmlByDom4J(pomPath, dependencyList);
             //根据生成的pom文件，执行mvn命令行 解析出依赖树
             dependencyTree.constructTree(projectPath);
-            dependencyTree.parseTreeSingle();
+            dependencyTree.parseTree(projectPath + "/tree.txt");
             //如果树存在conflict 加入待调解列表
             if (dependencyTree.isConflict()) {
                 resToMediate.add(dependencyTree);
@@ -207,7 +213,6 @@ public class SingleModule {
                 //否则加入无冲突结果集
                 resWithoutConflict.add(dependencyList);
                 System.out.println("无冲突，继续");
-
             }
         }
         //如果无冲突的结果集不存在 进入冲突调解程序
@@ -215,7 +220,6 @@ public class SingleModule {
             conflictMediation();
         }
     }
-
 
     public void conflictMediation() {
         //待冲突调解的结果集合

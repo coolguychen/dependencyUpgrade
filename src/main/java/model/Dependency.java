@@ -2,7 +2,6 @@ package model;
 
 import core.Crawl;
 import database.JDBC;
-import org.checkerframework.checker.units.qual.C;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -10,10 +9,7 @@ import org.jsoup.select.Elements;
 import util.HttpUtil;
 
 import java.io.IOException;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
@@ -42,11 +38,12 @@ public class Dependency {
 
     /**
      * 构造函数
-     * @param id 记为出现的顺序
+     *
+     * @param id               记为出现的顺序
      * @param groupId
      * @param artifactId
      * @param version
-     * @param depth 深度
+     * @param depth            深度
      * @param parentDependency 父依赖是谁
      */
     public Dependency(int id, String groupId, String artifactId, String version, int depth, Dependency parentDependency) {
@@ -75,7 +72,7 @@ public class Dependency {
         this.higherVersions.add(version);
     }
 
-    public Dependency(){
+    public Dependency() {
 
     }
 
@@ -139,18 +136,22 @@ public class Dependency {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                //线程休眠
-//                sleep();
-                //获取到mvnrepository上的依赖的网址
-                String address = LocalAddress + getGroupId() + "/" + getArtifactId();
-                Crawl crawl = new Crawl();
-                //用selenium爬取网页
-                String html = crawl.getPageSource(address);
-//                try {
-//                    html = HttpUtil.getHttp(address);
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                }
+                String html = null;
+                // TODO: 16/2/2023 首先看数据库是否存在该第三方库的信息
+                JDBC jdbc = new JDBC();
+                boolean isExist = jdbc.queryFromLibraryContent(getGroupId(), getArtifactId());
+                //如果数据库中存在，则不用爬取
+                if (isExist) {
+                    html = jdbc.getHtml();
+                } else { //否则用selenium爬取网页信息后插入本地数据库。
+                    //获取到mvnrepository上的依赖的网址
+                    String address = LocalAddress + getGroupId() + "/" + getArtifactId();
+                    Crawl crawl = new Crawl();
+                    //用selenium爬取网页
+                    html = crawl.getPageSource(address);
+                    //插入本地数据库
+                    jdbc.insertIntoLibraryContent(getGroupId(), getArtifactId(), html);
+                }
                 //如果页面返回response不为null 说明响应成功 才能继续
                 if (html != null) {
                     Document doc = Jsoup.parse(html);
@@ -191,7 +192,7 @@ public class Dependency {
         String html = null;
         // TODO: 28/11/2022 判断该依赖是否存在于数据库中，如果存在可以直接读取其html
         JDBC jdbc = new JDBC();
-        boolean res = jdbc.query(groupId, artifactId, version);
+        boolean res = jdbc.queryFromLibraryInfo(groupId, artifactId, version);
         //如果在数据库中存在
         if (res == true) {
             html = jdbc.getHtml();

@@ -163,15 +163,11 @@ public class IOUtil {
     }
 
     /**
-     * 根据dependncyList构造一个修改pom文件
+     * 根据dependncyList构造一个修改子模块的pom文件
      * @param pomPath
      * @param dependencyList
      */
-    public static void modifyXmlByDom4J(String pomPath, List<Dependency> dependencyList) {
-
-        /*
-         * 2.java修改xml
-         */
+    public static void modifyDependenciesXml(String pomPath, List<Dependency> dependencyList) {
         // 创建SAXReader对象
         SAXReader sr = new SAXReader();
         try{
@@ -180,38 +176,54 @@ public class IOUtil {
             // 获取根元素
             Element root = document.getRootElement();
             // 获取dependencies标签
+            //子模块获取方式
             Element dependencies = root.element("dependencies");
-            List<Element> list = dependencies.elements();
 
-            for (Dependency dependency : dependencyList) {
-                String groupId1 = dependency.getGroupId();
-                String artifactId1 = dependency.getArtifactId();
-                String version1 = dependency.getVersion();
-                for(Element e : list) {
-                    String groupId = e.element("groupId").getText();
-                    String artifactId = e.element("artifactId").getText();
-                    if(groupId1.equals(groupId) && artifactId1.equals(artifactId)) {
-                        //去除原来节点
-                        dependencies.remove(e);
-                        Element depElement = dependencies.addElement("dependency");
-                        Element element1 = depElement.addElement("groupId");
-                        element1.addText(groupId1);
-                        Element element2 = depElement.addElement("artifactId");
-                        element2.addText(artifactId1);
-                        Element element3 = depElement.addElement("version");
-                        element3.addText(version1);
-                    }
-                }
-
+            if(dependencies == null) { //父模块获取方式
+                dependencies = root.element("dependencyManagement").element("dependencies");
             }
-            // 调用下面的静态方法完成xml的写出
-            //写入xml文件
-            writeXml(document,pomPath);
+
+            //不为空才能继续
+            if(dependencies != null) {
+                List<Element> list = dependencies.elements();
+
+                for (Dependency dependency : dependencyList) {
+                    String groupId1 = dependency.getGroupId();
+                    String artifactId1 = dependency.getArtifactId();
+                    String version1 = dependency.getVersion();
+                    for(Element e : list) {
+                        String groupId = e.element("groupId").getText();
+                        String artifactId = e.element("artifactId").getText();
+                        if(groupId1.equals(groupId) && artifactId1.equals(artifactId)) {
+                            //去除原来节点
+                            dependencies.remove(e);
+                            Element depElement = dependencies.addElement("dependency");
+                            Element element1 = depElement.addElement("groupId");
+                            element1.addText(groupId1);
+                            Element element2 = depElement.addElement("artifactId");
+                            element2.addText(artifactId1);
+                            Element element3 = depElement.addElement("version");
+                            element3.addText(version1);
+                        }
+                    }
+
+                }
+                // 调用下面的静态方法完成xml的写出
+                //写入xml文件
+                writeXml(document,pomPath);
+            }else{
+                System.out.println("依赖项为空！");
+            }
+
         } catch (DocumentException e) {
             e.printStackTrace();
         }
     }
 
+
+    public void modifyDependencyManagement(){
+
+    }
 
     /**
      * 实现对文件的复制
