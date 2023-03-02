@@ -1,7 +1,6 @@
 package core;
 
 import model.Dependency;
-import model.DependencyTree;
 
 import java.io.File;
 import java.util.*;
@@ -18,28 +17,11 @@ public class Procedure {
     //pom文件路径的集合
     private static List<String> fileList = new ArrayList<>();
 
-    //解析出来的项目的依赖的集合
-    private List<Dependency> dependencySet = new ArrayList<>();
-
-    //所有依赖对应的更高版本的集合
-    private List<List<Dependency>> higherSet = new ArrayList<>();
-
     //得到的依赖升级版本的结果集合
     private List<List<Dependency>> resultSet = new ArrayList<>();
 
-    //无冲突的结果集
-    private List<List<Dependency>> resWithoutConflict = new ArrayList<>();
-
-    //需要调解/升级的结果集
-    private static List<DependencyTree> resToMediate = new ArrayList<>();
-
     //项目路径
     private String projectPath;
-
-    private String filePath = "D:\\Graduation Project";
-
-    private String treePath = "D:\\Graduation Project\\tree.txt";
-
 
     /**
      * @param init
@@ -49,39 +31,43 @@ public class Procedure {
     }
 
     public void checkType() {
-        int cnt = recursive(projectPath);
-        if (cnt > 1) type = Type.multiple;
+        recursive(projectPath);
+        if (pom_cnt > 1) type = Type.multiple;
         else type = Type.single;
     }
 
-    private int recursive(String path) {
-        int num = 0;
+    //记录有多少个pom文件
+    private int pom_cnt = 0 ;
+
+
+    private void recursive(String path) {
         File file = new File(path);
-        String childPath = path + "/pom.xml";
+        String childPath = path + "\\pom.xml";
         File pom_file = new File(childPath);
         //若pom文件不存在
         if (!pom_file.exists()) {
 //            System.out.println("该路径下无pom.xml");
-            return 0;
         }
         //若存在
         else {
             //将文件路径保存下来
             fileList.add(childPath);
-            //列出目录下的文件
+            pom_cnt++;
+            //列出目录下的其他文件
             File[] fs = file.listFiles();
             for (File f : fs) {
-                if (f.isDirectory() && !f.getName().contains("target"))    //若是目录且不是target目录，则递归查看是否存在pom文件
-                    num = 1 + recursive(f.getPath());
+                //如果是目录 继续遍历
+                if (f.isDirectory() && !f.getName().contains("target")) {    //若是目录且不是target目录，则递归查看是否存在pom文件
+                    recursive(f.getPath());
+                }
             }
-            return num;
         }
     }
 
     /**
      * 项目升级和依赖调解程序
      */
-    public void upgradeProject() {
+    public void upgradeAndMediateProject() {
         if (type == Type.single) {
             SingleModule single = new SingleModule(projectPath);
             //调用单模块的解决方案
@@ -127,8 +113,6 @@ public class Procedure {
 //            tree.queryAll(d, 1);
 //        }
 //    }
-
-
 
     public void defaultTest() {
         Dependency d11 = new Dependency("org.apache.httpcomponents", "httpclient", "4.5.12");

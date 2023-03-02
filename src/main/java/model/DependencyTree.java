@@ -7,8 +7,6 @@ import java.util.List;
 
 //多叉树
 public class DependencyTree {
-    private static String filePath = "D:\\Graduation Project";
-    private static String treePath = filePath + "/tree.txt";
     private static BufferedReader br; //读入流
     private Dependency root; //根节点
     private static boolean isConflict;
@@ -115,24 +113,6 @@ public class DependencyTree {
         return new String(chs);
     }
 
-
-    /**
-     * 输入文件根目录，执行mvn install
-     *
-     * @param path 文件根目录
-     */
-    public static void mvnInstall(String path) {
-        try {
-            Runtime runtime = Runtime.getRuntime();
-            System.out.println("正在构建项目......");
-            runtime.exec(new String[]{"cmd", "/c", "mvn install"}, null, new File(path));
-
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
     /**
      * 根据pom文件执行命令行：mvn dependency:tree -Dverbose生成tree.txt
      *
@@ -142,14 +122,22 @@ public class DependencyTree {
         try {
             Runtime runtime = Runtime.getRuntime();
             System.out.println("正在构造依赖关系......");
-            runtime.exec(new String[]{"cmd", "/c", "mvn dependency:tree -Dverbose > tree.txt"}, null, new File(rootPath));
+            Process process = runtime.exec(new String[]{"cmd", "/c", "mvn dependency:tree -Dverbose > tree.txt"}, null, new File(rootPath));
+            //等待线程运行结束
+            process.waitFor();
             System.out.println("构造完毕，输出tree.txt");
             printTree(rootPath + "/tree.txt");
         } catch (IOException e) {
             e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
 
+    /**
+     * 打印tree.txt中的信息
+     * @param treePath tree文件路径
+     */
     public static void printTree(String treePath) {
         try {
             //读入流 读取tree.txt 并打印
@@ -198,7 +186,6 @@ public class DependencyTree {
                         System.out.println("last line:" + currentLine);
                         break;
                     }
-                    // TODO: 12/2/2023 本地模块作为依赖如何解析
                     String[] info = currentLine.split(":"); //以“:“作为切割
                     String groupId;
                     String artifactId = info[1];
@@ -216,11 +203,11 @@ public class DependencyTree {
                             //出现冲突
                             conflict = true;
                             //打印冲突信息
-                            System.out.println(currentLine);
+                            System.out.println("存在依赖冲突！");
+                            System.out.println("冲突位置在：" + currentLine);
                             setIsConflict(true); //标记这颗树是存在冲突的
-                            System.out.println("冲突依赖！");
                         } else if (currentLine.contains("duplicate")) {
-                            System.out.println("重复依赖！");
+//                            System.out.println("重复依赖！");
                             duplicate = true;
                         }
                     }
@@ -261,52 +248,7 @@ public class DependencyTree {
         }
     }
 
-//    /**
-//     * 多模块项目解析依赖树
-//     */
-//    // TODO: 13/2/2023 多模块tree.txt解析
-//    public void parseTreeMulti(String treePath) {
-//        readTree(treePath);
-//        //解析treeInfo
-//    }
-//
-//    public void readTree(String treePath){
-//        try {
-//            //读入流 读取tree.txt 并打印
-//            InputStreamReader reader = new InputStreamReader(
-//                    new FileInputStream(treePath)); // 建立一个输入流对象reader
-//            br = new BufferedReader(reader); // 建立一个对象，它把文件内容转成计算机能读懂的语言
-//            String currentLine = "";
-//            List<String> treeInfo = new ArrayList<>(); //依赖树信息
-//            Dependency parentDependency = null;
-//            while ((currentLine = br.readLine()) != null) {
-//                try {
-//                    Thread.sleep(500);
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-//                //把符合条件的currentline存入info中
-//                if(currentLine.contains("[INFO] --------------------------------[ jar ]---------------------------------")){
-//                    //跳过两行 定位到
-//                    br.readLine();
-//                    currentLine = br.readLine();
-//                    //把依赖树信息加入到list中
-//                    while(!currentLine.equals("[INFO]")) {
-//                        treeInfo.add(currentLine);
-//                        currentLine = br.readLine();// 继续读取下一行
-//                    }
-//                }
-//
-//            }
-//        } catch (FileNotFoundException e) {
-//            e.printStackTrace();
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
-//    }
-
     public static void main(String[] args) {
-        DependencyTree tree = new DependencyTree();
         String testPath = "D:\\1javawork\\multiModelDemo\\B";
         constructTree(testPath);
         parseTree(testPath + "\\tree.txt");

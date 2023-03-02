@@ -2,3 +2,6 @@ C:\Users\dell\Desktop\forTest
 C:\Users\dell\Desktop\poi-test
 C:\Users\dell\Desktop\poi
 D:\1javawork\multiModelDemo
+
+java -jar dependencyUpgrade.jar D:\1javawork\multiModelDemo > output.txt
+

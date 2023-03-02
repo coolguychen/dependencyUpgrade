@@ -127,17 +127,16 @@ public class Dependency {
     /**
      * 对于依赖d，获取它更高版本的集合
      *
-     * @return higherSet
+     * @return higherList
      * @throws InterruptedException
      */
     public List<Dependency> getHigherDependencyList() throws InterruptedException {
-        // TODO: 7/2/2023 用selenium爬取网页信息
         CountDownLatch latch = new CountDownLatch(1);
         new Thread(new Runnable() {
             @Override
             public void run() {
                 String html = null;
-                // TODO: 16/2/2023 首先看数据库是否存在该第三方库的信息
+                // 首先看数据库是否存在该第三方库的信息
                 JDBC jdbc = new JDBC();
                 boolean isExist = jdbc.queryFromLibraryContent(getGroupId(), getArtifactId());
                 //如果数据库中存在，则不用爬取
@@ -180,61 +179,6 @@ public class Dependency {
         ).start();
         latch.await();
         return higherList;
-    }
-
-
-    /**
-     * 依赖的传递依赖
-     *
-     * @return 该依赖的全部传递依赖
-     */
-    public void getTransitiveDeps(DependencyTree dpTree) {
-        String html = null;
-        // TODO: 28/11/2022 判断该依赖是否存在于数据库中，如果存在可以直接读取其html
-        JDBC jdbc = new JDBC();
-        boolean res = jdbc.queryFromLibraryInfo(groupId, artifactId, version);
-        //如果在数据库中存在
-        if (res == true) {
-            html = jdbc.getHtml();
-        } else {
-            //获取到mvnrepository上的依赖的网址
-            String address = LocalAddress + getGroupId() + "/" + getArtifactId() + "/" + getVersion();
-            try {
-                html = HttpUtil.getHttp(address);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        //如果页面返回response不为null 说明解析html 才能继续
-        //解析html得到传递依赖
-        if (html != null) {
-            Document doc = Jsoup.parse(html);
-            //获取传递依赖 compile dependencies 直至为0 退出
-            //获取tag为h2的，
-            Elements elements = doc.getElementsByClass("version-section");
-            //获取到compile dependencies
-            Element e = elements.get(0);
-            int num = getCompileDepsNum(e);
-            if (num != 0) {
-                //将传递依赖加入subDependency
-                subDependency = getCompileDeps(e);
-                List<DependencyTree> subTree = new ArrayList<>();
-                //递归获取传递依赖
-                for (Dependency d : subDependency) {
-                    DependencyTree tree = new DependencyTree(d);
-                    subTree.add(tree);
-                    d.getTransitiveDeps(dpTree);
-                }
-                dpTree.setChildList(subTree); //设置子树
-            } else { //若num为0 退出
-                System.out.println(getArtifactId() + "的传递依赖不存在");
-                return; //递归终止条件
-            }
-        } else {
-            System.out.println("获取网页失败，请重试！");
-            getTransitiveDeps(dpTree);
-        }
-
     }
 
     public List<Dependency> getCompileDeps(Element e) {

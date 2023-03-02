@@ -19,11 +19,11 @@ public class SingleModule {
     private static String pomPath;
 
     //构造函数
-    SingleModule(){
+    SingleModule() {
 
     }
 
-    SingleModule(String path){
+    SingleModule(String path) {
         projectPath = path;
         pomPath = path + "/pom.xml";
     }
@@ -43,7 +43,8 @@ public class SingleModule {
     //需要调解/升级的结果集
     private static List<DependencyTree> resToMediate = new ArrayList<>();
 
-
+    //propertyMap
+    private static Map<String, String> propertyMap = new HashMap<>();
 
     /**
      * 单模块项目的升级方案
@@ -72,6 +73,7 @@ public class SingleModule {
             //pom.xml文件
             Document document = sr.read(projectPath + "/pom.xml");
             Element root = document.getRootElement();
+            addPropertyMap(root);
             Element dependencies = root.element("dependencies"); //获取到dependencies的字段
             List<Element> list = dependencies.elements(); //dependencies下的子元素
             for (Element dependency : list) { //循环输出全部dependency的相关信息
@@ -86,12 +88,34 @@ public class SingleModule {
                     String artifactId = dependency.element("artifactId").getText();
 //                System.out.println("artifactId为："+artifactId);
                     // TODO: 4/2/2023 关于${version}的解析
-                    String version = dependency.element("version").getText();
+                    Element version_ele = dependency.element("version");
 //                System.out.println("版本号为：" + version);
-                    //新建一个Dependency
-                    Dependency d = new Dependency(groupId, artifactId, version);
-                    //添加到项目依赖列表里面
-                    dependencySet.add(d);
+                    if (version_ele != null) {
+                        String version = dependency.element("version").getText();
+                        if (version.contains("${project.version}")) {
+//                                System.out.println("为本地模块，不考虑");
+                        } else if (version.contains("$")) {
+                            // TODO: 4/2/2023 关于${version}的解析
+                            // 获取{}中间的元素，在propertyMap中寻找对应
+                            version = version.substring(version.indexOf("{"), version.indexOf("}"));
+                            version = propertyMap.get(version);
+                            //新建一个Dependency
+                            Dependency d = new Dependency(groupId, artifactId, version);
+                            //添加到项目依赖列表里面
+                            dependencySet.add(d);
+                        } else {
+                            //加入待升级集合。
+                            //新建一个Dependency
+                            Dependency d = new Dependency(groupId, artifactId, version);
+                            //添加到项目依赖列表里面
+                            dependencySet.add(d);
+                        }
+                    }
+                    //版本号为空 默认latest / 父模块管理
+                    else {
+                        System.out.println("版本号为空。默认最新版本/在父模块进行管理.");
+                    }
+
                 }
 
             }
@@ -105,10 +129,23 @@ public class SingleModule {
     }
 
     /**
+     * 解析properties字段，应对出现引用版本号的情况。
+     * @param root
+     */
+    public void addPropertyMap(Element root) {
+        Element properties = root.element("properties"); //获取到properties的字段
+        List<Element> list = properties.elements();
+        for (Element property : list) {
+            String key = property.getName();
+            String value = property.getText();
+            propertyMap.put(key, value);
+        }
+    }
+
+    /**
      * 对于dependencySet中的每个dependency，获取它更高的版本
      */
     public void getHigherVersions() {
-        // 多线程并行 获取更高的版本
         for (Dependency d : dependencySet) {
             //获取到dependency更高版本的集合
             List<Dependency> higherDependencySet = new ArrayList<>();
@@ -201,7 +238,7 @@ public class SingleModule {
         ioUtil.copyFile(pomPath, backUpPath);
         for (List<Dependency> dependencyList : resultSet) {
             //对于结果集中的每一项，重写pom文件并调用mvn dependency:tree
-            ioUtil.writeXmlByDom4J(pomPath, dependencyList);
+            ioUtil.modifyDependenciesXml(pomPath, dependencyList);
             //根据生成的pom文件，执行mvn命令行 解析出依赖树
             dependencyTree.constructTree(projectPath);
             dependencyTree.parseTree(projectPath + "/tree.txt");
@@ -215,6 +252,8 @@ public class SingleModule {
                 System.out.println("无冲突，继续");
             }
         }
+        //恢复原来的pom文件
+        ioUtil.copyFile(backUpPath, pomPath);
         //如果无冲突的结果集不存在 进入冲突调解程序
         if (resWithoutConflict.size() == 0) {
             conflictMediation();
@@ -282,6 +321,12 @@ public class SingleModule {
                     }
                 }
             }
+        }
+    }
+
+    public void printRes() {
+        for (List<Dependency> d : resWithoutConflict) {
+
         }
     }
 }

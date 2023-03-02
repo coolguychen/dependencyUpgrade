@@ -31,7 +31,10 @@ public class MultipleModule extends SingleModule {
     private static HashMap<String, List<List<Dependency>>> filePath_resWithoutConflict = new HashMap<>();
 
     //需要调解/升级的结果集
-    private static HashMap<String,List<DependencyTree>> filePath_resToMediate = new HashMap<>();
+    private static HashMap<String, List<DependencyTree>> filePath_resToMediate = new HashMap<>();
+
+    //propertyMap
+    private static Map<String, String> propertyMap = new HashMap<>();
 
     MultipleModule(String path, List<String> list) {
         projectPath = path;
@@ -65,6 +68,7 @@ public class MultipleModule extends SingleModule {
             try {
                 Document document = sr.read(pomPath);
                 Element root = document.getRootElement();
+                addPropertyMap(root);
                 String groupId, artifactId, version;
                 Element dependencies;
                 List<Element> list;
@@ -85,7 +89,6 @@ public class MultipleModule extends SingleModule {
 //                System.out.println("groupId为：" + groupId);
                         artifactId = dependency.element("artifactId").getText();
 //                System.out.println("artifactId为："+artifactId);
-                        // TODO: 4/2/2023 关于${version}的解析
                         Element version_ele = dependency.element("version");
                         //如果版本号为空，说明已在父模块进行统一版本管理，跳过
                         //版本号不为空：
@@ -93,23 +96,31 @@ public class MultipleModule extends SingleModule {
                             version = dependency.element("version").getText();
                             if (version.contains("${project.version}")) {
 //                                System.out.println("为本地模块，不考虑");
+                            } else if (version.contains("$")) {
+                                // 获取{}中间的元素，在propertyMap中寻找对应
+                                version = version.substring(version.indexOf("{"), version.indexOf("}"));
+                                version = propertyMap.get(version);
+                                //新建一个Dependency
+                                Dependency d = new Dependency(groupId, artifactId, version);
+                                //添加到项目依赖列表里面
+                                dependencyList.add(d);
                             } else {
                                 //加入待升级集合。
                                 //新建一个Dependency
                                 Dependency d = new Dependency(groupId, artifactId, version);
                                 dependencyList.add(d);
                             }
+
                         }
                         //版本号为空 默认latest / 父模块管理
-                        else{
-                            // TODO: 16/2/2023
+                        else {
+                            System.out.println("版本号为空。默认最新版本/在父模块进行管理.");
                         }
                     }
                 }
-                if(j == 0) {
+                if (j == 0) {
                     parentDependencyManagement = dependencyList;
-                }
-                else {
+                } else {
                     //将文件路径及其对应的依赖列表放入hash表中
                     filePath_dpList.put(pomPath, dependencyList);
                 }
@@ -146,7 +157,6 @@ public class MultipleModule extends SingleModule {
                 upgradedSet.add(higherDependencySet); //加入集合中
             }
             System.out.println("-----------获取更高版本完毕。------------");
-            System.out.println("--生成结果集--");
             //根据upgradedSet,生成笛卡尔乘积——>结果集，加入hashmap中，进行下一步的依赖调解
             List<List<Dependency>> resSet = new ArrayList<>();
             descartes(upgradedSet, resSet, 0, new ArrayList<>());
@@ -162,9 +172,9 @@ public class MultipleModule extends SingleModule {
             List<List<Dependency>> set = entry.getValue(); //对应的升级方案
             String pomPath = filePath;
             //pom文件上一层目录地址 比如 A/pom.xml -> A
-            String parentPath = filePath.substring(0, filePath.lastIndexOf("/"));
-            String backUpPath = parentPath + "/backUpPom.xml";
-            // TODO: 8/2/2023 先备份一下原来的pom文件。
+            String parentPath = filePath.substring(0, filePath.lastIndexOf("\\"));
+            String backUpPath = parentPath + "\\backUpPom.xml";
+            // 先备份一下原来的pom文件。
             IOUtil ioUtil = new IOUtil();
             //备份文件
             ioUtil.copyFile(pomPath, backUpPath);
@@ -173,31 +183,31 @@ public class MultipleModule extends SingleModule {
                 DependencyTree dependencyTree = new DependencyTree();
                 //修改原来的pom文件，输入pom文件路径和dependencyList，根据dependencyList修改pom文件
                 ioUtil.modifyDependenciesXml(pomPath, dependencyList);
-                // TODO: 8/2/2023 多模块项目先进行mvn install 内部模块依赖关系
-//                dependencyTree.mvnInstall(projectPath);
-                // TODO: 15/2/2023 对每个pom文件构建依赖树
+                // TODO: 22/2/2023 休眠一下？
+                // 对每个pom文件构建依赖树
                 dependencyTree.constructTree(parentPath);
+                // TODO: 22/2/2023 休眠一下？
                 dependencyTree.parseTree(parentPath + "/tree.txt");
                 //如果树存在conflict 加入待调解列表
                 if (dependencyTree.isConflict()) {
                     System.out.println("加入待调解列表！");
                     //如果存在key 添加进列表
-                    if(filePath_resToMediate.containsKey(parentPath)) {
+                    if (filePath_resToMediate.containsKey(parentPath)) {
                         filePath_resToMediate.get(parentPath).add(dependencyTree);
                     }
                     //否则新建
-                    else{
+                    else {
                         List<DependencyTree> list = new ArrayList<>();
                         list.add(dependencyTree);
                         filePath_resToMediate.put(parentPath, list);
                     }
                 } else {
                     //否则加入无冲突结果集
-                    if(filePath_resWithoutConflict.containsKey(parentPath)) {
+                    if (filePath_resWithoutConflict.containsKey(parentPath)) {
                         filePath_resWithoutConflict.get(parentPath).add(dependencyList);
                     }
                     //否则新建
-                    else{
+                    else {
                         List<List<Dependency>> list = new ArrayList<>();
                         list.add(dependencyList);
                         filePath_resWithoutConflict.put(parentPath, list);
@@ -286,15 +296,15 @@ public class MultipleModule extends SingleModule {
 
     //打印无冲突的结果
     public void printRes() {
-        for(Map.Entry<String, List<List<Dependency>>> entry: filePath_resWithoutConflict.entrySet()) {
+        for (Map.Entry<String, List<List<Dependency>>> entry : filePath_resWithoutConflict.entrySet()) {
             String pomPath = entry.getKey();
             System.out.println("对于模块" + pomPath + ", 有以下升级且无冲突的结果集。");
             List<List<Dependency>> resWithoutConflict = entry.getValue();
             int i = 0;
-            for(List<Dependency> dependencyList : resWithoutConflict) {
+            for (List<Dependency> dependencyList : resWithoutConflict) {
                 System.out.println("结果集" + i + ":");
                 i++;
-                for(Dependency d: dependencyList) {
+                for (Dependency d : dependencyList) {
                     d.printDependency();
                 }
                 System.out.println("=================");
@@ -302,7 +312,17 @@ public class MultipleModule extends SingleModule {
         }
     }
 
-    // TODO: 17/2/2023 提取结果集的公共依赖，在父模块进行统一管理
 
+    // TODO: 17/2/2023 提取结果集的公共依赖，在父模块进行统一管理
+    public void extractCommonLibrary() {
+        //1. 对于最后每个没有依赖冲突的结果集，提取公共依赖
+        for (Map.Entry<String, List<List<Dependency>>> entry : filePath_resWithoutConflict.entrySet()) {
+
+        }
+
+        //2. 选取其中版本最高的，放到父模块中统一管理
+
+        //3. 修改原来的pom文件 去掉version字段
+    }
 
 }

@@ -43,7 +43,7 @@ public class Crawl {
 
     public static void getPageByWebDriver(String groupId, String artifactId, String webLink) {
         //设置驱动
-        System.setProperty("webdriver.chrome.driver", "D:\\chromedriver(2).exe");
+        System.setProperty("webdriver.chrome.driver", "./util/chromedriver.exe");
         //创建驱动
         WebDriver driver = new ChromeDriver();
         //与将要爬取的网站建立连接
@@ -120,8 +120,7 @@ public class Crawl {
         sleep();
         String link = javaDoc + groupId + "/" + artifactId + "/" + version + "/index.html";
         //设置驱动
-        System.setProperty("webdriver.chrome.driver", "D:\\chromedriver(2).exe");
-        //创建驱动
+        setProperty();
         WebDriver driver = new ChromeDriver();
         //与将要爬取的网站建立连接
         driver.get(link);
@@ -146,9 +145,9 @@ public class Crawl {
      */
     public static String getPageSource(String webLink){
         //设置驱动
-        System.setProperty("webdriver.chrome.driver", "D:\\chromedriver(2).exe");
-        //创建驱动
-        WebDriver driver = new ChromeDriver();
+//设置驱动
+setProperty();
+WebDriver driver = new ChromeDriver();
         //与将要爬取的网站建立连接
         driver.get(webLink);
         try{
@@ -167,6 +166,15 @@ public class Crawl {
         String html = driver.getPageSource();
         driver.close(); //关闭当前页面
         return html;
+    }
+
+
+    /**
+     * 设置驱动
+     */
+    public static void setProperty(){
+        System.setProperty("webdriver.chrome.driver", "src/main/java/util/chromedriver.exe");
+
     }
 
 

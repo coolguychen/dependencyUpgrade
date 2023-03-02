@@ -10,6 +10,7 @@ import javax.print.Doc;
 import java.io.*;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 public class IOUtil {
 
@@ -168,6 +169,8 @@ public class IOUtil {
      * @param dependencyList
      */
     public static void modifyDependenciesXml(String pomPath, List<Dependency> dependencyList) {
+        CountDownLatch latch = new CountDownLatch(1);
+
         // 创建SAXReader对象
         SAXReader sr = new SAXReader();
         try{
@@ -178,15 +181,12 @@ public class IOUtil {
             // 获取dependencies标签
             //子模块获取方式
             Element dependencies = root.element("dependencies");
-
             if(dependencies == null) { //父模块获取方式
                 dependencies = root.element("dependencyManagement").element("dependencies");
             }
-
             //不为空才能继续
             if(dependencies != null) {
                 List<Element> list = dependencies.elements();
-
                 for (Dependency dependency : dependencyList) {
                     String groupId1 = dependency.getGroupId();
                     String artifactId1 = dependency.getArtifactId();
@@ -211,11 +211,19 @@ public class IOUtil {
                 // 调用下面的静态方法完成xml的写出
                 //写入xml文件
                 writeXml(document,pomPath);
+                sleep();
             }else{
                 System.out.println("依赖项为空！");
             }
-
         } catch (DocumentException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void sleep() {
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }
@@ -242,7 +250,6 @@ public class IOUtil {
                 os.write(data, 0, len);
             }
         } catch (FileNotFoundException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }catch(IOException e) {
             e.printStackTrace();
@@ -253,7 +260,6 @@ public class IOUtil {
                     os.close();
                 }
             } catch (IOException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
 
             }
@@ -262,7 +268,6 @@ public class IOUtil {
                     is.close();
                 }
             } catch (IOException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
 
             }
