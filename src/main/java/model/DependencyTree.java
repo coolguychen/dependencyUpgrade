@@ -121,12 +121,12 @@ public class DependencyTree {
     public static void constructTree(String rootPath) {
         try {
             Runtime runtime = Runtime.getRuntime();
-            System.out.println("正在构造依赖关系......");
+//            System.out.println("正在构造依赖关系......");
             Process process = runtime.exec(new String[]{"cmd", "/c", "mvn dependency:tree -Dverbose > tree.txt"}, null, new File(rootPath));
             //等待线程运行结束
             process.waitFor();
-            System.out.println("构造完毕，输出tree.txt");
-            printTree(rootPath + "/tree.txt");
+//            System.out.println("构造完毕，输出tree.txt");
+//            printTree(rootPath + "/tree.txt");
         } catch (IOException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
@@ -183,7 +183,7 @@ public class DependencyTree {
                 if (index != -1) {
                     //depth小于0 说明是最后一行 退出
                     if (currentLine.contains("Finished")) {
-                        System.out.println("last line:" + currentLine);
+//                        System.out.println("last line:" + currentLine);
                         break;
                     }
                     String[] info = currentLine.split(":"); //以“:“作为切割
@@ -203,8 +203,8 @@ public class DependencyTree {
                             //出现冲突
                             conflict = true;
                             //打印冲突信息
-                            System.out.println("存在依赖冲突！");
-                            System.out.println("冲突位置在：" + currentLine);
+//                            System.out.println("存在依赖冲突！");
+//                            System.out.println("冲突位置在：" + currentLine);
                             setIsConflict(true); //标记这颗树是存在冲突的
                         } else if (currentLine.contains("duplicate")) {
 //                            System.out.println("重复依赖！");

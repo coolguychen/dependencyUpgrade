@@ -162,7 +162,7 @@ public class Dependency {
                             //加入集合中
                             higherVersions.add(text);
                             higherList.add(new Dependency(groupId, artifactId, text));
-                            System.out.println("获取到" + artifactId + "的更高版本:" + text);
+//                            System.out.println("获取到" + artifactId + "的更高版本:" + text);
                         } else {
                             //如果遇到了小于自身的依赖 退出循环？
                             break;

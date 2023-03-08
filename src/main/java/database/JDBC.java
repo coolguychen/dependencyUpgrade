@@ -27,7 +27,7 @@ public class JDBC {
         try {
             Class.forName(JdbcDriver);
             // 打开链接
-            System.out.println("连接数据库...");
+//            System.out.println("连接数据库...");
             conn = DriverManager.getConnection(Url, User, PassWord);
 
         } catch (ClassNotFoundException e) {

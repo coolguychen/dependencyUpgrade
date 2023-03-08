@@ -67,7 +67,7 @@ public class SingleModule {
      */
     public void parsePom() throws InterruptedException {
 //        dependencySet = new DependencySet();
-        System.out.print("解析结果中...");
+        System.out.println("解析" + pomPath + "结果中...");
         SAXReader sr = new SAXReader();
         try {
             //pom.xml文件
@@ -115,14 +115,12 @@ public class SingleModule {
                     else {
                         System.out.println("版本号为空。默认最新版本/在父模块进行管理.");
                     }
-
                 }
-
             }
-            System.out.println("获取到如下依赖：");
-            for (Dependency d : dependencySet) {
-                System.out.println(d.getArtifactId() + ":" + d.getVersion());
-            }
+//            System.out.println("获取到如下依赖：");
+//            for (Dependency d : dependencySet) {
+//                System.out.println(d.getArtifactId() + ":" + d.getVersion());
+//            }
         } catch (DocumentException e) {
             e.printStackTrace();
         }
@@ -164,8 +162,7 @@ public class SingleModule {
             //依赖集合大小不为0
             higherSet.add(higherDependencySet); //加入集合中
         }
-        System.out.println("获取更高版本完毕。");
-
+//        System.out.println("获取更高版本完毕。");
     }
 
 
@@ -245,7 +242,7 @@ public class SingleModule {
             //如果树存在conflict 加入待调解列表
             if (dependencyTree.isConflict()) {
                 resToMediate.add(dependencyTree);
-                System.out.println("加入待调解列表！");
+//                System.out.println("加入待调解列表！");
             } else {
                 //否则加入无冲突结果集
                 resWithoutConflict.add(dependencyList);
@@ -301,7 +298,7 @@ public class SingleModule {
                         }
                         //否则需要exclude实际加载的依赖
                         else {
-                            System.out.print("exclude实际加载的依赖：");
+                            System.out.print("exclusion实际加载的依赖：");
                             dependency.printDependency();
                             if (conflictDepList.size() == 1) {
                                 //如果map里面只有一个特殊处理？
@@ -312,7 +309,7 @@ public class SingleModule {
                                     Dependency parent = unLoadDependency.getParentDependency();
                                     System.out.print("建议父依赖：");
                                     parent.printDependency();
-                                    System.out.print("需要exclude子依赖：");
+                                    System.out.print("需要exclusion子依赖：");
                                     unLoadDependency.printDependency();
                                 }
                             }

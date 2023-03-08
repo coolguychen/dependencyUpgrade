@@ -114,7 +114,7 @@ public class MultipleModule extends SingleModule {
                         }
                         //版本号为空 默认latest / 父模块管理
                         else {
-                            System.out.println("版本号为空。默认最新版本/在父模块进行管理.");
+//                            System.out.println("版本号为空。默认最新版本/在父模块进行管理.");
                         }
                     }
                 }
@@ -156,7 +156,7 @@ public class MultipleModule extends SingleModule {
                 //获取dependency更高的依赖后，加入upgradedSet
                 upgradedSet.add(higherDependencySet); //加入集合中
             }
-            System.out.println("-----------获取更高版本完毕。------------");
+//            System.out.println("-----------获取更高版本完毕。------------");
             //根据upgradedSet,生成笛卡尔乘积——>结果集，加入hashmap中，进行下一步的依赖调解
             List<List<Dependency>> resSet = new ArrayList<>();
             descartes(upgradedSet, resSet, 0, new ArrayList<>());
@@ -183,14 +183,12 @@ public class MultipleModule extends SingleModule {
                 DependencyTree dependencyTree = new DependencyTree();
                 //修改原来的pom文件，输入pom文件路径和dependencyList，根据dependencyList修改pom文件
                 ioUtil.modifyDependenciesXml(pomPath, dependencyList);
-                // TODO: 22/2/2023 休眠一下？
                 // 对每个pom文件构建依赖树
                 dependencyTree.constructTree(parentPath);
-                // TODO: 22/2/2023 休眠一下？
                 dependencyTree.parseTree(parentPath + "/tree.txt");
                 //如果树存在conflict 加入待调解列表
                 if (dependencyTree.isConflict()) {
-                    System.out.println("加入待调解列表！");
+//                    System.out.println("加入待调解列表！");
                     //如果存在key 添加进列表
                     if (filePath_resToMediate.containsKey(parentPath)) {
                         filePath_resToMediate.get(parentPath).add(dependencyTree);
@@ -212,10 +210,9 @@ public class MultipleModule extends SingleModule {
                         list.add(dependencyList);
                         filePath_resWithoutConflict.put(parentPath, list);
                     }
-                    System.out.println("对于模块" + parentPath + "无冲突，继续");
+//                    System.out.println("对于模块" + parentPath + "无冲突，继续");
                 }
             }
-            // TODO: 15/2/2023 然后对其进行依赖调解
             //如果无冲突的结果集不存在 进入冲突调解程序
             if (filePath_resWithoutConflict.get(parentPath).size() == 0) {
                 System.out.println("对于模块" + parentPath + ":");
@@ -224,14 +221,13 @@ public class MultipleModule extends SingleModule {
             //重新恢复pom文件为backUpPom
             ioUtil.copyFile(backUpPath, pomPath);
 
-            System.out.println("======分割线======下一个模块=======");
+//            System.out.println("======分割线======下一个模块=======");
         }
     }
 
     public void conflictMediation(List<DependencyTree> resToMediate) {
         //待冲突调解的结果集合
         //遍历filePath_resToMediate
-
         for (DependencyTree tree : resToMediate) {
             //获取冲突依赖的集合
             HashMap<String[], List<Dependency>> conflictMap = tree.getConflictMap();
@@ -271,7 +267,7 @@ public class MultipleModule extends SingleModule {
                         }
                         //否则需要exclude实际加载的依赖
                         else {
-                            System.out.print("exclude实际加载的依赖：");
+                            System.out.print("exclusion实际加载的依赖：");
                             dependency.printDependency();
                             if (conflictDepList.size() == 1) {
                                 //如果map里面只有一个特殊处理？
@@ -282,7 +278,7 @@ public class MultipleModule extends SingleModule {
                                     Dependency parent = unLoadDependency.getParentDependency();
                                     System.out.print("建议父依赖：");
                                     parent.printDependency();
-                                    System.out.print("需要exclude子依赖：");
+                                    System.out.print("需要exclusion子依赖：");
                                     unLoadDependency.printDependency();
                                 }
                             }

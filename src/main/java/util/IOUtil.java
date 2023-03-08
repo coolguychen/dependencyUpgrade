@@ -14,10 +14,7 @@ import java.util.concurrent.CountDownLatch;
 
 public class IOUtil {
 
-    private static String filePath = "D:\\Graduation Project";
     private static String pomPath = "D:\\Graduation Project\\pom.xml";
-    private static String treePath = filePath + "/tree.txt";
-
     private static Document document;
     private static Element root;
 
@@ -120,7 +117,7 @@ public class IOUtil {
      * @param document
      */
     public static void writeXml(Document document, String pomPath) {
-        System.out.println("写入pom.xml文件......");
+//        System.out.println("写入pom.xml文件......");
         try {
             //创建文件
             OutputFormat format = OutputFormat.createPrettyPrint();
