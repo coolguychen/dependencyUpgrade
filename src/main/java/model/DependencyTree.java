@@ -4,31 +4,35 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 //多叉树
 public class DependencyTree {
-    private static BufferedReader br; //读入流
+    private BufferedReader br; //读入流
     private Dependency root; //根节点
-    private static boolean isConflict;
-    private static List<Dependency> resList = new ArrayList<>();
+    private boolean isConflict;
+    //某一结果集
+    private List<Dependency> result = new ArrayList<>();
+
+    //加载的所有依赖的列表
+    private List<Dependency> resList = new ArrayList<>();
     //冲突的依赖的集合
     //Key为groupId&artifactId, Value是对应的冲突的依赖的List
-    private static HashMap<String[], List<Dependency>> conflictMap = new HashMap<>();
+    private HashMap<String[], List<Dependency>> conflictMap = new HashMap<>();
 
-    private static List<DependencyTree> childList; //子树集合
+    private List<DependencyTree> childList; //子树集合
 
     public DependencyTree() {
         isConflict = false;
+        resList = new ArrayList<>();
+        conflictMap = new HashMap<>();
     }
 
-    /**
-     * 构造函数
-     *
-     * @param root
-     */
-    public DependencyTree(Dependency root) {
-        this.root = root;
-        this.childList = new ArrayList<>();
+    public DependencyTree(List<Dependency> dependencyList) {
+        result = dependencyList;
+        isConflict = false;
+        resList = new ArrayList<>();
+        conflictMap = new HashMap<>();
     }
 
     /**
@@ -50,8 +54,8 @@ public class DependencyTree {
         this.root = root;
     }
 
-    public static void setIsConflict(boolean isConflict) {
-        DependencyTree.isConflict = isConflict;
+    public void setIsConflict(boolean isConflict) {
+        this.isConflict = isConflict;
     }
 
     public List<DependencyTree> getChildList() {
@@ -62,7 +66,7 @@ public class DependencyTree {
         this.childList = childList;
     }
 
-    public static List<Dependency> getResList() {
+    public List<Dependency> getResList() {
         return resList;
     }
 
@@ -72,6 +76,14 @@ public class DependencyTree {
 
     public boolean isConflict() {
         return isConflict;
+    }
+
+    public List<Dependency> getResult() {
+        return this.result;
+    }
+
+    public void setResult(List<Dependency> result) {
+        this.result = result;
     }
 
     /**
@@ -121,12 +133,12 @@ public class DependencyTree {
     public static void constructTree(String rootPath) {
         try {
             Runtime runtime = Runtime.getRuntime();
-            System.out.println("正在构造依赖关系......");
+//            System.out.println("正在构造依赖关系......");
             Process process = runtime.exec(new String[]{"cmd", "/c", "mvn dependency:tree -Dverbose > tree.txt"}, null, new File(rootPath));
             //等待线程运行结束
             process.waitFor();
-            System.out.println("构造完毕，输出tree.txt");
-            printTree(rootPath + "/tree.txt");
+//            System.out.println("构造完毕，输出tree.txt");
+//            printTree(rootPath + "/tree.txt");
         } catch (IOException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
@@ -160,7 +172,7 @@ public class DependencyTree {
      * 输入tree文件路径，解析依赖树
      * @param treePath
      */
-    public static void parseTree(String treePath) {
+    public void parseTree(String treePath) {
         int cnt = 0;
         try {
             //读入流 读取tree.txt 并打印
@@ -183,7 +195,7 @@ public class DependencyTree {
                 if (index != -1) {
                     //depth小于0 说明是最后一行 退出
                     if (currentLine.contains("Finished")) {
-                        System.out.println("last line:" + currentLine);
+//                        System.out.println("last line:" + currentLine);
                         break;
                     }
                     String[] info = currentLine.split(":"); //以“:“作为切割
@@ -203,8 +215,8 @@ public class DependencyTree {
                             //出现冲突
                             conflict = true;
                             //打印冲突信息
-                            System.out.println("存在依赖冲突！");
-                            System.out.println("冲突位置在：" + currentLine);
+//                            System.out.println("存在依赖冲突！");
+//                            System.out.println("冲突位置在：" + currentLine);
                             setIsConflict(true); //标记这颗树是存在冲突的
                         } else if (currentLine.contains("duplicate")) {
 //                            System.out.println("重复依赖！");
@@ -216,23 +228,15 @@ public class DependencyTree {
                         groupId = info[0].substring(index + 3);
                     }
                     String[] key = new String[]{groupId, artifactId};
-
                     //如果depth为0 设置为父节点
                     if (depth == 0) {
                         parentDependency = new Dependency(groupId, artifactId, version);
                     }
                     if (conflict == true) {
                         Dependency conflictDependency = new Dependency(cnt++, groupId, artifactId, version, depth, parentDependency);
-                        //判断该依赖是否已经存在于map中
-                        if (conflictMap.containsKey(key)) {
-                            conflictMap.get(key).add(conflictDependency);
-                        }
-                        //如果不存在 新加进去
-                        else {
-                            List<Dependency> list = new ArrayList<>();
-                            list.add(conflictDependency);
-                            conflictMap.put(key, list);
-                        }
+                        //判断该依赖是否已经存在于map中 注意不能用containsKey
+                        //TODO: debug这里 key
+                        addToConflictMap(key, conflictDependency);
                     } else { //如果不含conflict 正常加入resList
                         //依赖结果加入resList
                         Dependency dependency = new Dependency(cnt++, groupId, artifactId, version, depth, parentDependency);
@@ -248,9 +252,31 @@ public class DependencyTree {
         }
     }
 
-    public static void main(String[] args) {
-        String testPath = "D:\\1javawork\\multiModelDemo\\B";
-        constructTree(testPath);
-        parseTree(testPath + "\\tree.txt");
+
+    /**
+     * 把conflictDependency加入conflictMap
+     * key:{groupId, artifactId}
+     * @param key
+     * @param conflictDependency
+     */
+    public void addToConflictMap(String[] key, Dependency conflictDependency) {
+        for(Map.Entry<String[],List<Dependency>> entry: conflictMap.entrySet()) {
+            String[] key_pair = entry.getKey();
+            if(key_pair[0].equals(key[0]) && key_pair[1].equals(key[1])){
+                conflictMap.get(key_pair).add(conflictDependency);
+                return;
+            }
+        }
+        //如果不存咋 新建map entry
+        List<Dependency> list = new ArrayList<>();
+        list.add(conflictDependency);
+        conflictMap.put(key, list);
     }
+
+
+//    public static void main(String[] args) {
+//        String testPath = "D:\\1javawork\\multiModelDemo\\B";
+//        constructTree(testPath);
+//        parseTree(testPath + "\\tree.txt");
+//    }
 }

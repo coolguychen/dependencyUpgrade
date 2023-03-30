@@ -82,40 +82,42 @@ public class MultipleModule extends SingleModule {
                     Element e = dependency.element("scope");
                     if (e != null) {
                         String scope = dependency.element("scope").getText();
-                        if (scope.equals("test") || scope.equals("runtime"))
+                        if (!scope.equals("compile")){ //如果范围不为compile
                             System.out.println("排除范围为" + scope + "的包");
-                    } else {
-                        groupId = dependency.element("groupId").getText();
+                            continue; //继续遍历
+                        }
+                    }
+                    //scope为空或者指定为compile
+                    groupId = dependency.element("groupId").getText();
 //                System.out.println("groupId为：" + groupId);
-                        artifactId = dependency.element("artifactId").getText();
+                    artifactId = dependency.element("artifactId").getText();
 //                System.out.println("artifactId为："+artifactId);
-                        Element version_ele = dependency.element("version");
-                        //如果版本号为空，说明已在父模块进行统一版本管理，跳过
-                        //版本号不为空：
-                        if (version_ele != null) {
-                            version = dependency.element("version").getText();
-                            if (version.contains("${project.version}")) {
+                    Element version_ele = dependency.element("version");
+                    //如果版本号为空，说明已在父模块进行统一版本管理，跳过
+                    //版本号不为空：
+                    if (version_ele != null) {
+                        version = dependency.element("version").getText();
+                        if (version.contains("${project.version}")) {
 //                                System.out.println("为本地模块，不考虑");
-                            } else if (version.contains("$")) {
-                                // 获取{}中间的元素，在propertyMap中寻找对应
-                                version = version.substring(version.indexOf("{"), version.indexOf("}"));
-                                version = propertyMap.get(version);
-                                //新建一个Dependency
-                                Dependency d = new Dependency(groupId, artifactId, version);
-                                //添加到项目依赖列表里面
-                                dependencyList.add(d);
-                            } else {
-                                //加入待升级集合。
-                                //新建一个Dependency
-                                Dependency d = new Dependency(groupId, artifactId, version);
-                                dependencyList.add(d);
-                            }
+                        } else if (version.contains("$")) {
+                            // 获取{}中间的元素，在propertyMap中寻找对应
+                            version = version.substring(version.indexOf("{"), version.indexOf("}"));
+                            version = propertyMap.get(version);
+                            //新建一个Dependency
+                            Dependency d = new Dependency(groupId, artifactId, version);
+                            //添加到项目依赖列表里面
+                            dependencyList.add(d);
+                        } else {
+                            //加入待升级集合。
+                            //新建一个Dependency
+                            Dependency d = new Dependency(groupId, artifactId, version);
+                            dependencyList.add(d);
+                        }
 
-                        }
-                        //版本号为空 默认latest / 父模块管理
-                        else {
-                            System.out.println("版本号为空。默认最新版本/在父模块进行管理.");
-                        }
+                    }
+                    //版本号为空 默认latest / 父模块管理
+                    else {
+//                            System.out.println("版本号为空。默认最新版本/在父模块进行管理.");
                     }
                 }
                 if (j == 0) {
@@ -132,6 +134,7 @@ public class MultipleModule extends SingleModule {
 
     @Override
     public void getHigherVersions() {
+        System.out.println("------获取升级方案中------");
         //对于子模块 分别找到可升级的结果集
         for (Map.Entry<String, List<Dependency>> entry : filePath_dpList.entrySet()) {
             //对于map中的每一个pom文件，获取文件路径 & 使用的依赖，对每一个使用的依赖获取其更高版本：upgradedSet
@@ -156,7 +159,7 @@ public class MultipleModule extends SingleModule {
                 //获取dependency更高的依赖后，加入upgradedSet
                 upgradedSet.add(higherDependencySet); //加入集合中
             }
-            System.out.println("-----------获取更高版本完毕。------------");
+//            System.out.println("-----------获取更高版本完毕。------------");
             //根据upgradedSet,生成笛卡尔乘积——>结果集，加入hashmap中，进行下一步的依赖调解
             List<List<Dependency>> resSet = new ArrayList<>();
             descartes(upgradedSet, resSet, 0, new ArrayList<>());
@@ -166,6 +169,7 @@ public class MultipleModule extends SingleModule {
 
     @Override
     public void conflictDetect() {
+        System.out.println("------依赖冲突检测中------");
         //对每一个结果集 首先构建依赖树
         for (Map.Entry<String, List<List<Dependency>>> entry : filePath_resSet.entrySet()) {
             String filePath = entry.getKey(); //pom文件路径
@@ -183,14 +187,12 @@ public class MultipleModule extends SingleModule {
                 DependencyTree dependencyTree = new DependencyTree();
                 //修改原来的pom文件，输入pom文件路径和dependencyList，根据dependencyList修改pom文件
                 ioUtil.modifyDependenciesXml(pomPath, dependencyList);
-                // TODO: 22/2/2023 休眠一下？
                 // 对每个pom文件构建依赖树
                 dependencyTree.constructTree(parentPath);
-                // TODO: 22/2/2023 休眠一下？
                 dependencyTree.parseTree(parentPath + "/tree.txt");
                 //如果树存在conflict 加入待调解列表
                 if (dependencyTree.isConflict()) {
-                    System.out.println("加入待调解列表！");
+//                    System.out.println("加入待调解列表！");
                     //如果存在key 添加进列表
                     if (filePath_resToMediate.containsKey(parentPath)) {
                         filePath_resToMediate.get(parentPath).add(dependencyTree);
@@ -212,26 +214,26 @@ public class MultipleModule extends SingleModule {
                         list.add(dependencyList);
                         filePath_resWithoutConflict.put(parentPath, list);
                     }
-                    System.out.println("对于模块" + parentPath + "无冲突，继续");
+//                    System.out.println("对于模块" + parentPath + "无冲突，继续");
                 }
             }
-            // TODO: 15/2/2023 然后对其进行依赖调解
             //如果无冲突的结果集不存在 进入冲突调解程序
             if (filePath_resWithoutConflict.get(parentPath).size() == 0) {
-                System.out.println("对于模块" + parentPath + ":");
+                System.out.println("对于模块" + parentPath + ": 进行依赖冲突调解！");
                 conflictMediation(filePath_resToMediate.get(parentPath));
             }
             //重新恢复pom文件为backUpPom
             ioUtil.copyFile(backUpPath, pomPath);
 
-            System.out.println("======分割线======下一个模块=======");
+//            System.out.println("======分割线======下一个模块=======");
         }
     }
 
     public void conflictMediation(List<DependencyTree> resToMediate) {
+        System.out.println("无冲突的升级方案不存在，需要进行冲突调解！");
+        System.out.println("---------------------------------");
         //待冲突调解的结果集合
         //遍历filePath_resToMediate
-
         for (DependencyTree tree : resToMediate) {
             //获取冲突依赖的集合
             HashMap<String[], List<Dependency>> conflictMap = tree.getConflictMap();
@@ -254,7 +256,7 @@ public class MultipleModule extends SingleModule {
                                 return o1.getDepth() - o2.getDepth();
                             }
                         } else {
-                            return o2.getVersion().compareTo(o1.getVersion());
+                            return 0-compareVersions(o1.getVersion(), o2.getVersion());
                         }
                     }
                 });
@@ -271,7 +273,7 @@ public class MultipleModule extends SingleModule {
                         }
                         //否则需要exclude实际加载的依赖
                         else {
-                            System.out.print("exclude实际加载的依赖：");
+                            System.out.print("exclusion实际加载的依赖：");
                             dependency.printDependency();
                             if (conflictDepList.size() == 1) {
                                 //如果map里面只有一个特殊处理？
@@ -282,7 +284,7 @@ public class MultipleModule extends SingleModule {
                                     Dependency parent = unLoadDependency.getParentDependency();
                                     System.out.print("建议父依赖：");
                                     parent.printDependency();
-                                    System.out.print("需要exclude子依赖：");
+                                    System.out.print("需要exclusion子依赖：");
                                     unLoadDependency.printDependency();
                                 }
                             }
@@ -298,18 +300,25 @@ public class MultipleModule extends SingleModule {
     public void printRes() {
         for (Map.Entry<String, List<List<Dependency>>> entry : filePath_resWithoutConflict.entrySet()) {
             String pomPath = entry.getKey();
-            System.out.println("对于模块" + pomPath + ", 有以下升级且无冲突的结果集。");
             List<List<Dependency>> resWithoutConflict = entry.getValue();
-            int i = 0;
-            for (List<Dependency> dependencyList : resWithoutConflict) {
-                System.out.println("结果集" + i + ":");
-                i++;
-                for (Dependency d : dependencyList) {
-                    d.printDependency();
+            if(resWithoutConflict.size() != 0 ){
+                System.out.println("对于模块" + pomPath + ", 有以下升级且无冲突的结果集：");
+                int i = 0;
+                for (List<Dependency> dependencyList : resWithoutConflict) {
+                    System.out.println("结果集" + i + ":");
+                    i++;
+                    for (Dependency d : dependencyList) {
+                        d.printDependency();
+                    }
+                    System.out.println("==========分割线==========");
                 }
-                System.out.println("=================");
+            }
+            else {
+                System.out.println("对于模块" + pomPath + ", 不存在无冲突的结果集，请参考依赖调解方案！");
             }
         }
+        //TODO: 公共依赖的处理
+        System.out.println("----!Hint: 公共依赖请放入父POM中的dependencyManagement进行统一版本管理！----");
     }
 
 

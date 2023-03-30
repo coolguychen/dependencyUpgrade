@@ -7,7 +7,7 @@ public class JDBC {
     // MySQL 8.0 以上版本选择
     static final String JdbcDriver = "com.mysql.cj.jdbc.Driver";
     //连接服务器上的数据库
-    static final String Url = "jdbc:mysql://47.106.102.237:3306/library?useSSL=false&serverTimezone=UTC";
+    static final String Url = "jdbc:mysql://119.45.194.32:3306/javalib?useSSL=false&serverTimezone=UTC";
 
     private static Connection conn = null;
     private static Statement stmt = null;
@@ -15,8 +15,8 @@ public class JDBC {
     private static String html = null;
 
     //输入连接数据库的用户名与密码(阿里云ECS)
-    static final String User = "root";//输入你的数据库库名
-    static final String PassWord = "CYH_library_1";//输入你的数据库连接密码
+    static final String User = "javalib";//输入你的数据库库名
+    static final String PassWord = "2DF37F3518AD03F60D3FE88BA3FC152C";//输入你的数据库连接密码
 
     public JDBC() {
         if(conn == null) startUp();
@@ -27,7 +27,7 @@ public class JDBC {
         try {
             Class.forName(JdbcDriver);
             // 打开链接
-            System.out.println("连接数据库...");
+//            System.out.println("连接数据库...");
             conn = DriverManager.getConnection(Url, User, PassWord);
 
         } catch (ClassNotFoundException e) {

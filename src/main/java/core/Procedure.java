@@ -73,6 +73,7 @@ public class Procedure {
             //调用单模块的解决方案
             single.singleModuleUpgrade();
             single.conflictDetect();
+            single.printRes();
         } else {
             MultipleModule multi = new MultipleModule(projectPath, fileList);
             //调用多模块的解决方案

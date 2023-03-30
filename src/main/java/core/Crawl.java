@@ -23,7 +23,8 @@ public class Crawl {
     //常用库的地址
     private static String[] address = {
             "commons-io/commons-io",
-            "mysql/mysql-connector-java"
+            "mysql/mysql-connector-java",
+            "commons-codec/commons-codec"
     };
 
 
@@ -116,7 +117,7 @@ public class Crawl {
     }
 
 
-    public static void crawlJavaDoc(String groupId, String artifactId, String version){
+    public static void crawlJavaDoc(String groupId, String artifactId, String version) {
         sleep();
         String link = javaDoc + groupId + "/" + artifactId + "/" + version + "/index.html";
         //设置驱动
@@ -141,20 +142,20 @@ public class Crawl {
 
     /**
      * 获取网站的源代码。
+     *
      * @param webLink
      */
-    public static String getPageSource(String webLink){
+    public static String getPageSource(String webLink) {
         //设置驱动
 //设置驱动
-setProperty();
-WebDriver driver = new ChromeDriver();
+        setProperty();
+        WebDriver driver = new ChromeDriver();
         //与将要爬取的网站建立连接
         driver.get(webLink);
-        try{
+        try {
             driver.manage().timeouts().pageLoadTimeout(10, TimeUnit.SECONDS);
 //some excecution code....
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             System.out.println("Error. Closing");
             driver.quit();
             try {
@@ -172,7 +173,7 @@ WebDriver driver = new ChromeDriver();
     /**
      * 设置驱动
      */
-    public static void setProperty(){
+    public static void setProperty() {
         System.setProperty("webdriver.chrome.driver", "src/main/java/util/chromedriver.exe");
 
     }
